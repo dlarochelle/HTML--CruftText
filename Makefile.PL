@@ -14,6 +14,10 @@ WriteMakefile(
     PL_FILES            => {},
     PREREQ_PM => {
         'Test::More' => 0,
+
+        'Time::HiRes' => 1.51,
+        'List::MoreUtils' => 0.33,
+
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'HTML-CruftText-*' },

@@ -3,11 +3,9 @@ package HTML::CruftText;
 use 5.012;
 use strict;
 use warnings;
-use HTML::Entities;
-use Text::Similarity::Overlaps;
+
 use Time::HiRes;
 use List::MoreUtils qw(first_index indexes last_index);
-use Array::Compare;
 
 # STATICS
 
