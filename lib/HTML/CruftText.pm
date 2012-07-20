@@ -220,13 +220,6 @@ sub _remove_nonbody_text
     }
 }
 
-sub has_clickprint
-{
-    my ( $lines ) = @_;
-
-    return defined( _clickprint_start_line( $lines ) );
-}
-
 sub _clickprint_start_line
 {
     my ( $lines ) = @_;
@@ -513,6 +506,21 @@ sub clearCruftText
 
     return $lines;
 }
+
+=head2 has_clickprint ( $lines )
+
+Returns true if the HTML in $lines has click print tags.
+Returns false otherwise.
+
+=cut
+
+sub has_clickprint
+{
+    my ( $lines ) = @_;
+
+    return defined( _clickprint_start_line( $lines ) );
+}
+
 
 =head1 AUTHOR
 
