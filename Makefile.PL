@@ -13,8 +13,9 @@ WriteMakefile(
       : ()),
     PL_FILES            => {},
     PREREQ_PM => {
-        'Test::More' => 0,
-        'Test::Pod'  => 1.45,
+        'Test::More'           => 0,
+        'Test::Pod'            => 1.45,
+        'Test::Pod::Coverage'  => 1.08,
 
         'Time::HiRes'      => 1.51,
         'List::MoreUtils'  => 0.33,
