@@ -451,7 +451,7 @@ sub _print_time
 
 =head1 NAME
 
-HTML::CruftText - The great new HTML::CruftText!
+HTML::CruftText - Remove unuseful text from HTML
 
 =head1 VERSION
 
@@ -464,11 +464,14 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+Removes junk from HTML page text. 
+
+This module uses a regular expression based approach to remove uninteresting text/content from HTML. This content that is very unlikely to be useful or interesting.
+
 
     use HTML::CruftText;
 
-    open (my $MYINPUTFILE, '<input.txt' );
+    open (my $MYINPUTFILE, '<input.html' );
     
     my @lines = <$MYINPUTFILE>;
 
@@ -476,9 +479,36 @@ Quick summary of what the module does.
 
     ...
 
+=head1 DESCRIPTION
+
+This module was developed for the Media Cloud project (http://mediacloud.org) as the first step in differentiating article text from ads, navigation, and other boilerplate text. Its approach is very conservative and almost never removes legitimate article text. However, it still leaves in a lot of cruft so many users will want to do additional processing.
+
+Typically the clearCruftText method is called with an array reference containing the lines of an HTML file. Each line is then altered so that the cruft text is removed. After completion some lines will be entirely blank, while others will have certain text removed. In a few rare cases additional HTML tags may be added. The result is NOT GUARANTEED to be valid, balanced HTML though some HTML is retained because it is extremely useful for further processing. Some users will want to run an HTML stripper over the results.
+
+The following methods are used to remove cruft text:
+
+* Nonbody text outside of the <body></body> tags is removed
+* Text within the following tags is removed: <script>, <style>, <frame>, <applet>, and <textarea>
+* clickprint markers -- many web sites have clickprint annotation comments explicitly mark whether whether text should be included.
+* Removal of HTML tags in comments: we remove any HTML tags within <!-- --> comments but keep other comment text. This makes the result easier to process with regular expressions.
+* Close tags that span multiple lines within an single open tag. For example, we would change:
+
+     FOO<a 
+   href="bar.com>BAZ
+
+ to:
+
+     FOO<a >
+   <a href="bar.com>BAZ
+   
+this makes the output easier to process with regular expressions.
+
+
 =head1 SUBROUTINES/METHODS
 
-=head2 clearCruftText
+=head2 clearCruftText( $lines )
+
+This is the main method for this module. Removes cruft text from $lines and returns the result. Generally $lines will be a reference to an array of lines from an HTML file. However, this method can also be called with a string in which case the string will be split into multiple lines and an array reference of decrufted html lines is returned.
 
 =cut
 
@@ -509,7 +539,7 @@ sub clearCruftText
 
 =head2 has_clickprint ( $lines )
 
-Returns true if the HTML in $lines has click print tags.
+Returns true if the HTML in $lines has clickprint annotation comment tags.
 Returns false otherwise.
 
 =cut
