@@ -79,16 +79,7 @@ SUBROUTINES/METHODS
        Returns true if the HTML in $lines has clickprint annotation comment
        tags.  Returns false otherwise.
 
-
-SSUUBBRROOUUTTIINNEESS//MMEETTHHOODDSS
-   cclleeaarrCCrruuffttTTeexxtt(( $$lliinneess ))
-       This is the main method for this module. Removes cruft text from $lines
-       and returns the result. Generally $lines will be a reference to an
-       array of lines from an HTML file. However, this method can also be
-       called with a string, in which case, the string will be split into
-       multiple lines and an array reference of decrufted html lines is
-       returned.
-
+LICENSE AND COPYRIGHT
        Copyright 2012 Berkman Center for Internet & Society at Harvard
        University.
 
