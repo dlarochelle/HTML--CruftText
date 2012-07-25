@@ -1,51 +1,134 @@
-HTML-CruftText
-
-The README is used to introduce the module and provide instructions on
-how to install the module, any machine dependencies it may have (for
-example C compilers and installed libraries) and any other information
-that should be provided before the module is installed.
-
-A README file is required for CPAN modules since CPAN extracts the README
-file from a module distribution so that people browsing the archive
-can use it to get an idea of the module's uses. It is usually a good idea
-to provide version information here so that people can decide whether
-fixes for the module are worth downloading.
+hhoommee::::ddllaarroocchheellllee::::ccppaanUn_s_memorodduCulolenests:r::i:HbHTuTMtMLeL-d-CCrPrueufrftltTTeDexoxtct:u::m:beblnlitibab:t::i:lolinibb::::HHTTMMLL::::CCrruuffttTTeexxtt((33))
 
 
-INSTALLATION
 
-To install this module, run the following commands:
+NNAAMMEE
+       HTML::CruftText - Remove unuseful text from HTML
 
-	perl Makefile.PL
-	make
-	make test
-	make install
+VVEERRSSIIOONN
+       Version 0.01
 
-SUPPORT AND DOCUMENTATION
+SSYYNNOOPPSSIISS
+       Removes junk from HTML page text.
 
-After installing, you can find documentation for this module with the
-perldoc command.
+       This module uses a regular expression based approach to remove cruft
+       from HTML. I.e. content/text that is very unlikely to be useful or
+       interesting.
 
-    perldoc HTML::CruftText
+           use HTML::CruftText;
 
-You can also look for information at:
+           open (my $MYINPUTFILE, '<input.html' );
 
-    RT, CPAN's request tracker (report bugs here)
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=HTML-CruftText
+           my @lines = <$MYINPUTFILE>;
 
-    AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/HTML-CruftText
+           my $de_crufted_lines = HTML::CruftText::clearCruftText( \@lines);
 
-    CPAN Ratings
-        http://cpanratings.perl.org/d/HTML-CruftText
+           ...
 
-    Search CPAN
-        http://search.cpan.org/dist/HTML-CruftText/
+DDEESSCCRRIIPPTTIIOONN
+       This module was developed for the Media Cloud project
+       (http://mediacloud.org) as the first step in differentiating article
+       text from ads, navigation, and other boilerplate text. Its approach is
+       very conservative and almost never removes legitimate article text.
+       However, it still leaves in a lot of cruft so many users will want to
+       do additional processing.
+
+       Typically, the clearCruftText method is called with an array reference
+       containing the lines of an HTML file. Each line is then altered so that
+       the cruft text is removed. After completion some lines will be entirely
+       blank, while others will have certain text removed. In a few rare
+       cases, additional HTML tags are added. The result is NOT GUARANTEED to
+       be valid, balanced HTML though some HTML is retained because it is
+       extremely useful for further processing. Thus some users will want to
+       run an HTML stripper over the results.
+
+       The following tactics are used to remove cruft text:
+
+       * Nonbody text --anything outside of the <body></body> tags -- is
+       removed
+
+       * Text within the following tags is removed: <script>, <style>,
+       <frame>, <applet>, and <textarea>
+
+       * clickprint markers -- many web sites have clickprint annotation
+       comments that explicitly mark whether text should be included.
+
+       * Removal of HTML tags in comments: we remove any HTML tags within <!--
+       --> comments but keep other comment text. This makes the result easier
+       to process with regular expressions.
+
+       * Close tags that span multiple lines within an single open tag. For
+       example, we would change:
+
+            FOO<a
+          href="bar.com>BAZ
+
+        to:
+
+            FOO<a >
+          <a href="bar.com>BAZ
+
+       this makes the output easier to process with regular expressions.
+
+SSUUBBRROOUUTTIINNEESS//MMEETTHHOODDSS
+   cclleeaarrCCrruuffttTTeexxtt(( $$lliinneess ))
+       This is the main method for this module. Removes cruft text from $lines
+       and returns the result. Generally $lines will be a reference to an
+       array of lines from an HTML file. However, this method can also be
+       called with a string, in which case, the string will be split into
+       multiple lines and an array reference of decrufted html lines is
+       returned.
+
+   hhaass__cclliicckkpprriinntt (( $$lliinneess ))
+       Returns true if the HTML in $lines has clickprint annotation comment
+       tags.  Returns false otherwise.
+
+AAUUTTHHOORR
+       David Larochelle, "<dlarochelle at cyber.law.harvard.edu>"
+
+BBUUGGSS
+       Please report any bugs or feature requests to "bug-html-crufttext at
+       rt.cpan.org", or through the web interface at
+       http://rt.cpan.org/NoAuth/ReportBug.html?Queue=HTML-CruftText
+       <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=HTML-CruftText>.  I
+       will be notified, and then you'll automatically be notified of progress
+       on your bug as I make changes.
+
+SSUUPPPPOORRTT
+       You can find documentation for this module with the perldoc command.
+
+           perldoc HTML::CruftText
+
+       You can also look for information at:
+
+       ·   RT: CPAN's request tracker (report bugs here)
+
+           http://rt.cpan.org/NoAuth/Bugs.html?Dist=HTML-CruftText
+           <http://rt.cpan.org/NoAuth/Bugs.html?Dist=HTML-CruftText>
+
+       ·   AnnoCPAN: Annotated CPAN documentation
+
+           http://annocpan.org/dist/HTML-CruftText
+           <http://annocpan.org/dist/HTML-CruftText>
+
+       ·   CPAN Ratings
+
+           http://cpanratings.perl.org/d/HTML-CruftText
+           <http://cpanratings.perl.org/d/HTML-CruftText>
+
+       ·   Search CPAN
+
+           http://search.cpan.org/dist/HTML-CruftText/
+           <http://search.cpan.org/dist/HTML-CruftText/>
+
+AACCKKNNOOWWLLEEDDGGEEMMEENNTTSS
+LLIICCEENNSSEE AANNDD CCOOPPYYRRIIGGHHTT
+       Copyright 2012 Berkman Center for Internet & Society at Harvard
+       University.
+
+       This program is released under the following license: aAffero General
+       Public License
 
 
-LICENSE AND COPYRIGHT
 
-Copyright (C) 2012 David Larochelle
-
-This program is released under the following license: agpl
-
+pheormle:v:5d.l1a4r.o2chelle::cpan_modules::H2T0M1L2--C0r7u-f2t4Text::blib::lib::HTML::CruftText(3)
