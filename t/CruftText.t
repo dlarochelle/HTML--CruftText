@@ -210,6 +210,46 @@ Real article text
 __END_TEST_CASE__
     },
     {
+        test_name  => 'multiline nested comment',
+        test_input => <<'__END_TEST_CASE__',
+<html>
+<header>
+<html>
+<body>
+JUNK STRING
+</body>
+</html>
+</header>
+<body>
+Real article text
+This is the comment, <!-- Hello there!
+Here goes another line of the comment.
+And hey, <!-- look, comment in a comment!
+But this is --> where the comment ends.
+</body>
+</html>
+__END_TEST_CASE__
+        ,
+        test_output => <<'__END_TEST_CASE__',
+
+
+
+<body>
+JUNK STRING
+</body>
+</html>
+</header>
+<body>
+Real article text
+This is the comment, 
+
+
+ where the comment ends.
+</body>
+
+__END_TEST_CASE__
+    },
+    {
         test_name  => '</body> in <script>',
         test_input => <<'__END_TEST_CASE__',
 <html>
