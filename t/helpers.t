@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 4 + 1 + 1;
+use Test::More tests => 5 + 1 + 1;
 use Test::NoWarnings;
 
 use Readonly;
@@ -58,9 +58,6 @@ sub test_fix_multiline_tags()
     my $input;
     my $expected_output;
 
-    my $input_array;
-    my $output;
-
     # Basic test
     $input =  "        Some text.\n";
     $input .= "        <foo\n";
@@ -72,11 +69,7 @@ sub test_fix_multiline_tags()
     $expected_output .= "<foo         bar>\n";
     $expected_output .= "        Some more text.";
 
-    $input_array = [ split("\n", $input) ];
-    HTML::CruftText::_fix_multiline_tags($input_array);
-    $output = join("\n", @{$input_array});
-
-    is($output, $expected_output, '_remove_tags_in_comments - Basic test');
+    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_remove_tags_in_comments - Basic test');
 
     # Text between tags
     $input =  "        Some text.\n";
@@ -91,11 +84,20 @@ sub test_fix_multiline_tags()
     $expected_output .= "<foo         bar>\n";
     $expected_output .= "        Even more text.";
 
-    $input_array = [ split("\n", $input) ];
-    HTML::CruftText::_fix_multiline_tags($input_array);
-    $output = join("\n", @{$input_array});
+    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_remove_tags_in_comments - Text between tags');
 
-    is($output, $expected_output, '_remove_tags_in_comments - Text between tags');
+    # Tags on the same line
+    $input =  "        Some text.\n";
+    $input .= "        <foo>\n";
+    $input .= "        <bar>\n";
+    $input .= "        Some more text.\n";
+
+    $expected_output =  "        Some text.\n";
+    $expected_output .= "        <foo>\n";
+    $expected_output .= "        <bar>\n";
+    $expected_output .= "        Some more text.";  # sans the last newline
+
+    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_remove_tags_in_comments - Taks on the same line');
 }
 
 

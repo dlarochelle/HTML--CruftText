@@ -6,6 +6,7 @@ use warnings;
 
 use Time::HiRes;
 use List::MoreUtils qw(first_index indexes last_index);
+use Data::Dumper;
 
 # STATICS
 
@@ -66,12 +67,13 @@ sub _remove_tags_in_comments($)
 }
 
 
+sub _prepend_every_line_with_tag($$)
+{
+    my ($tag_name, $data) = @_;
 
-    if (scalar(@{$lines}) != $number_of_lines) {
-        die "Number of lines after processing is different.";
-    }
+    $data =~ s/\n/ >\n$tag_name /gs;
 
-    return $lines;
+    return $data;
 }
 
 # make sure that all tags start and close on one line
@@ -85,25 +87,28 @@ sub _remove_tags_in_comments($)
 # <foo>
 # <tag bar>
 #
-sub _fix_multiline_tags
+sub _fix_multiline_tags($)
 {
-    my ( $lines ) = @_;
+    my $html = shift;
 
-    my $add_start_tag;
-    for ( my $i = 0 ; $i < @{ $lines } ; $i++ )
-    {
-        if ( $add_start_tag )
-        {
-            $lines->[ $i ] = "<$add_start_tag " . $lines->[ $i ];
-            $add_start_tag = undef;
-        }
+    $html =~ s/
 
-        if ( $lines->[ $i ] =~ /<([^ >]*)[^>]*$/ )
-        {
-            $add_start_tag = $1;
-            $lines->[ $i ] .= ' >';
-        }
-    }
+        # Start of the tag (e.g. "<foo")
+        (<[^\s>]*)
+
+        # Anything but the ">" and a linebreak (tag doesn't end on the same line)
+        [^>]*\n
+
+        # Any content up until the end of the tag (">")
+        [^>]*>
+
+        /_prepend_every_line_with_tag($1, $&)/sigex;
+
+    # Somehow the old implementation managed to strip the last linebreak from
+    # the resulting string, so we do this here too
+    $html =~ s/\n$//;
+
+    return $html;
 }
 
 #remove all text not within the <body> tag
@@ -486,7 +491,7 @@ sub clearCruftText
     $html = _remove_tags_in_comments( $html );
     _print_time( "remove tags" );
 
-    _fix_multiline_tags( $lines );
+    $html = _fix_multiline_tags( $html );
     _print_time( "fix multiline" );
 
     _remove_script_text( $lines );
