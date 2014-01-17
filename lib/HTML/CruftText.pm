@@ -470,24 +470,42 @@ sub clearCruftText
 {
     my $lines = shift;
 
-    if ( !ref( $lines ) )
-    {
-        $lines = [ split( /[\n\r]+/, $lines ) ];
+    my $expected_number_of_lines;
+    my $html;
+
+    if (ref ($lines)) {
+        # Arrayref
+        $expected_number_of_lines = scalar (@{$lines});
+        $html = join ("\n", @{ $lines });
+    } else {
+        # String - change all line endings to Unix
+        $html = $lines;
+        $expected_number_of_lines = $html =~ s/[\n\r]+/\n/g;
     }
 
-    _print_time( "split_lines" );
-
-    $lines = _remove_tags_in_comments( $lines );
-
+    $html = _remove_tags_in_comments( $html );
     _print_time( "remove tags" );
+
     _fix_multiline_tags( $lines );
     _print_time( "fix multiline" );
+
     _remove_script_text( $lines );
     _print_time( "remove scripts" );
+
     _remove_nonbody_text( $lines );
     _print_time( "remove nonbody" );
+
     _remove_nonclickprint_text( $lines );
     _print_time( "remove clickprint" );
+
+    # Return arrayref in all cases
+    $lines = [ split( /\n/, $html ) ];
+
+    # Make sure that the number of lines is the same as in the input
+    my $processed_number_of_lines = scalar(@{ $lines });
+    if ($expected_number_of_lines != $processed_number_of_lines) {
+        die "The number of lines changed after processing the input HTML (expected: $expected_number_of_lines; actual: $processed_number_of_lines)\n";
+    }
 
     return $lines;
 }
