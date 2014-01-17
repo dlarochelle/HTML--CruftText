@@ -1,8 +1,7 @@
 #!/usr/bin/perl
 
-# test MediaWords::Crawler::Extractor against manually extracted downloads
-
 use strict;
+use warnings;
 
 BEGIN
 {
