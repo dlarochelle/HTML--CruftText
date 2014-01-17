@@ -19,6 +19,9 @@ my $_MARKER_PATTERNS = {
     sphereitend            => qr/<\!--\s*DISABLEsphereit\s*end/i,
     body                   => qr/<body/i,
     comment                => qr/(id|class)="[^"]*comment[^"]*"/i,
+
+    # Any clickprint comment
+    clickprint => qr/<\!--\s*(start|end)clickprint(in|ex)clude/pi,
 };
 
 #TODO handle sphereit like we're now handling CLickprint.
@@ -26,122 +29,41 @@ my $_MARKER_PATTERNS = {
 # blank everything within these elements
 my $_SCRUB_TAGS = [ qw/script style frame applet textarea/ ];
 
+
+# Decide upon the HTML comment's contents
+sub _comment_contents_for_comment($) {
+
+    my $comment = shift;
+
+    # Don't touch clickprint comments
+    return($comment) if ($comment =~ $_MARKER_PATTERNS->{clickprint});
+
+    # Retain the number of newlines
+    my $newlines = ($comment =~ tr/\n//);
+
+    return "\n" x $newlines;
+}
+
+# Remove HTML comments retaining the number of lines;
 # remove >'s from inside comments so the simple line density scorer
 # doesn't get confused about where tags end
-sub _remove_tags_in_comments
+sub _remove_tags_in_comments($)
 {
-    my ( $lines ) = @_;
+    my $lines = shift;
 
-    my $state = 'text';
+    my $number_of_lines = scalar(@{$lines});
 
-    for ( my $i = 0 ; $i < @{ $lines } ; $i++ )
-    {
-        my $line = \$lines->[ $i ];
+    my $html = join("\n", @{$lines});
 
-        my $pos    = 0;
-        my $length = length( $$line );
-        while ( $pos < $length )
-        {
+    $html =~ s/<!--(.*?)-->/_comment_contents_for_comment($&)/sige;
 
-            #print "state $i $pos: $state\n";
-            if ( $state eq 'text' )
-            {
-                if ( substr( $$line, $pos, 2 ) eq '<!' )
-                {
-                    $state = 'declaration';
-                    $pos += 2;
-                }
-                else
-                {
-                    $pos++;
-                }
-            }
-            elsif ( $state eq 'declaration' )
-            {
-                if ( substr( $$line, $pos, 2 ) eq '--' )
-                {
-                    $state = 'comment';
-                    $pos += 2;
+    $lines = [ split("\n", $html) ];
 
-                    my $extra_hyphens = 0;
+    if (scalar(@{$lines}) != $number_of_lines) {
+        die "Number of lines after processing is different.";
+    }
 
-                    # deal with commonly broken comment syntax
-                    while ( substr( $$line, $pos, 1 ) eq '-' )
-                    {
-                        $pos++;
-                        $extra_hyphens++;
-                    }
-
-                    #deal with empty comment <!---->
-                    if ( ( $extra_hyphens >= 2 ) && ( substr( $$line, $pos, 1 ) eq '>' ) )
-                    {
-                        $state = 'declaration';
-                    }
-                }
-                elsif ( substr( $$line, $pos, 1 ) eq '>' )
-                {
-                    $state = 'text';
-                    $pos += 1;
-                }
-                else
-                {
-                    $pos++;
-                }
-            }
-            elsif ( $state eq 'comment' )
-            {
-                if (   ( substr( $$line, $pos, 1 ) eq '<' )
-                    || ( substr( $$line, $pos, 1 ) eq '>' ) )
-                {
-                    substr( $lines->[ $i ], $pos, 1 ) = '|';
-                    $pos += 1;
-                }
-                elsif ( substr( $$line, $pos, 2 ) eq '--' )
-                {
-                    $pos += 2;
-
-                    # deal with commonly broken comment syntax
-                    while ( substr( $$line, $pos, 1 ) eq '-' )
-                    {
-                        $pos++;
-                    }
-
-                    if ( substr( $$line, $pos, 1 ) eq '>' )
-                    {
-                        $state = 'declaration';
-                    }
-                    else
-                    {    # Handle the case of a comment with ---- in the middle of it e.g. <!-- -------- -->
-                        $state = 'comment';
-                    }
-
-                }
-                else
-                {
-                    $pos++;
-                }
-            }
-        }    #while ( $pos < $length )
-
-        if ( $state eq 'comment' )
-        {
-            $lines->[ $i ] .= ' -->';
-            if ( defined( $lines->[ $i + 1 ] ) )
-            {
-                $lines->[ $i + 1 ] = '<!-- ' . $lines->[ $i + 1 ];
-                $state = 'text';
-            }
-        }
-        elsif ( $state eq 'declaration' )
-        {
-            $lines->[ $i ] .= ' >';
-            if ( defined( $lines->[ $i + 1 ] ) )
-            {
-                $lines->[ $i + 1 ] = '<!DECLARATION ' . $lines->[ $i + 1 ];
-                $state = 'text';
-            }
-        }
-    }    # for
+    return $lines;
 }
 
 # make sure that all tags start and close on one line
@@ -527,7 +449,8 @@ sub clearCruftText
 
     _print_time( "split_lines" );
 
-    _remove_tags_in_comments( $lines );
+    $lines = _remove_tags_in_comments( $lines );
+
     _print_time( "remove tags" );
     _fix_multiline_tags( $lines );
     _print_time( "fix multiline" );
