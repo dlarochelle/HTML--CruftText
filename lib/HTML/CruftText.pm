@@ -28,7 +28,7 @@ my $_MARKER_PATTERNS = {
 #TODO handle sphereit like we're now handling CLickprint.
 
 # blank everything within these elements
-my $_SCRUB_TAGS = [ qw/script style frame applet textarea/ ];
+my $_AUXILIARY_TAGS = [ qw/script style frame applet textarea/ ];
 
 
 # Preserve newlines in the match
@@ -272,12 +272,12 @@ sub _get_string_after_comment_end_tags
     return substr( $$current_substring, $comment_end_pos );
 }
 
-# remove text wthin script, style, iframe, applet, and textarea tags
-sub _remove_script_text($)
+# remove text within script, style, iframe, applet, and textarea tags
+sub _remove_auxiliary_element_text($)
 {
     my $html = shift;
 
-    foreach my $tag_to_remove (@{$_SCRUB_TAGS}) {
+    foreach my $tag_to_remove (@{$_AUXILIARY_TAGS}) {
 
         $html =~ s/(<\Q$tag_to_remove\E\b[^>]*>)(.*?)(<\/\Q$tag_to_remove\E>)/$1._preserve_newlines($2).$3/sigex;
 
@@ -418,9 +418,10 @@ sub clearCruftText
     $html = _fix_multiline_tags( $html );
     _print_time( "fix multiline" );
 
-    # _remove_script_text() is run before _remove_nonbody_text() because <script> elements might contain <body>
-    $html = _remove_script_text( $html );
-    _print_time( "remove scripts" );
+    # _remove_auxiliary_element_text() is run before _remove_nonbody_text()
+    # because <script> elements might contain <body>
+    $html = _remove_auxiliary_element_text( $html );
+    _print_time( "remove auxiliary element text" );
 
     $html = _remove_nonbody_text( $html );
     _print_time( "remove nonbody" );

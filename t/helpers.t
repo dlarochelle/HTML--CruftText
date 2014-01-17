@@ -170,7 +170,7 @@ sub test_remove_nonbody_text()
     is(HTML::CruftText::_remove_nonbody_text($input), $expected_output, '_remove_nonbody_text - Multiple <body> elements');
 }
 
-sub test_remove_script_text()
+sub test_remove_auxiliary_element_text()
 {
     my $input;
     my $expected_output;
@@ -208,7 +208,7 @@ sub test_remove_script_text()
     $expected_output .= "</body>\n";
     $expected_output .= "</html>\n";
 
-    is(HTML::CruftText::_remove_script_text($input), $expected_output, '_remove_script_text - Basic test');
+    is(HTML::CruftText::_remove_auxiliary_element_text($input), $expected_output, '_remove_auxiliary_element_text - Basic test');
 }
 
 sub main()
@@ -216,7 +216,7 @@ sub main()
     test_remove_tags_in_comments();
     test_fix_multiline_tags();
     test_remove_nonbody_text();
-    test_remove_script_text();
+    test_remove_auxiliary_element_text();
 }
 
 main();
