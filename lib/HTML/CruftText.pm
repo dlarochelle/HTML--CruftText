@@ -58,15 +58,14 @@ sub _comment_contents_for_comment($)
 # doesn't get confused about where tags end
 sub _remove_tags_in_comments($)
 {
-    my $lines = shift;
-
-    my $number_of_lines = scalar(@{$lines});
-
-    my $html = join("\n", @{$lines});
+    my $html = shift;
 
     $html =~ s/<!--(.*?)-->/_comment_contents_for_comment($&)/sige;
 
-    $lines = [ split("\n", $html) ];
+    return $html;
+}
+
+
 
     if (scalar(@{$lines}) != $number_of_lines) {
         die "Number of lines after processing is different.";
