@@ -30,18 +30,27 @@ my $_MARKER_PATTERNS = {
 my $_SCRUB_TAGS = [ qw/script style frame applet textarea/ ];
 
 
-# Decide upon the HTML comment's contents
-sub _comment_contents_for_comment($) {
+# Preserve newlines in the match
+sub _preserve_newlines($)
+{
+    my $data = shift;
 
+    # Retain the number of newlines
+    my $newlines = ($data =~ tr/\n//);
+
+    return "\n" x $newlines;    
+}
+
+
+# Decide upon the HTML comment's contents
+sub _comment_contents_for_comment($)
+{
     my $comment = shift;
 
     # Don't touch clickprint comments
     return($comment) if ($comment =~ $_MARKER_PATTERNS->{clickprint});
 
-    # Retain the number of newlines
-    my $newlines = ($comment =~ tr/\n//);
-
-    return "\n" x $newlines;
+    return _preserve_newlines($comment);
 }
 
 # Remove HTML comments retaining the number of lines;
