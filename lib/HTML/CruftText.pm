@@ -111,48 +111,22 @@ sub _fix_multiline_tags($)
     return $html;
 }
 
-#remove all text not within the <body> tag
-#Note: Some badly formated web pages will have multiple <body> tags or will not have an open tag.
-#We go the conservative thing of only deleting stuff before the first <body> tag and stuff after the last </body> tag.
-sub _remove_nonbody_text
+# Remove all text not within the <body> tag
+# Note: some badly formated web pages will have multiple <body> tags or will
+# not have an open tag.
+# We go the conservative thing of only deleting stuff before the first <body>
+# tag and stuff after the last </body> tag.
+sub _remove_nonbody_text($)
 {
-    my ( $lines ) = @_;
+    my $html = shift;
 
-    my $add_start_tag;
+    # Remove everything before the first <body>
+    $html =~ s/^(.*?)(<body)/_preserve_newlines($1).$2/sie;
 
-    my $state = 'before_body';
+    # Remove everything after the last </body>
+    $html =~ s/(.*)(<\/body>)(.*?)$/$1.$2._preserve_newlines($3)/sie;
 
-    my $body_open_tag_line_number = first_index { $_ =~ /<body/i } @{ $lines };
-
-    if ( $body_open_tag_line_number != -1 )
-    {
-
-        #delete everything before <body>
-        for ( my $line_number_to_clear = 0 ; $line_number_to_clear < $body_open_tag_line_number ; $line_number_to_clear++ )
-        {
-            $lines->[ $line_number_to_clear ] = '';
-        }
-
-        $lines->[ $body_open_tag_line_number ] =~ s/^.*?\<body/<body/i;
-    }
-
-    my $body_close_tag_line_number = last_index { $_ =~ /<\/body/i } @{ $lines };
-
-    if ( $body_close_tag_line_number != -1 )
-    {
-
-        #delete everything after </body>
-
-        $lines->[ $body_close_tag_line_number ] =~ s/<\/body>.*/<\/body>/i;
-        for (
-            my $line_number_to_clear = ( $body_close_tag_line_number + 1 ) ;
-            $line_number_to_clear < scalar( @{ $lines } ) ;
-            $line_number_to_clear++
-          )
-        {
-            $lines->[ $line_number_to_clear ] = '';
-        }
-    }
+    return $html;
 }
 
 sub _clickprint_start_line
@@ -497,7 +471,7 @@ sub clearCruftText
     _remove_script_text( $lines );
     _print_time( "remove scripts" );
 
-    _remove_nonbody_text( $lines );
+    $html = _remove_nonbody_text( $html );
     _print_time( "remove nonbody" );
 
     _remove_nonclickprint_text( $lines );

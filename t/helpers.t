@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 5 + 1 + 1;
+use Test::More tests => 7 + 1 + 1;
 use Test::NoWarnings;
 
 use Readonly;
@@ -100,11 +100,81 @@ sub test_fix_multiline_tags()
     is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_remove_tags_in_comments - Taks on the same line');
 }
 
+sub test_remove_nonbody_text()
+{
+    my $input;
+    my $expected_output;
+
+    # Basic test
+    $input =  "<html>\n";
+    $input .= "<head>\n";
+    $input .= "  <title>This is a test</title>\n";
+    $input .= "</head>\n";
+    $input .= "<body>\n";
+    $input .= "<p>This is a paragraph.</p>\n";
+    $input .= "<p>This is another paragraph.</p>\n";
+    $input .= "</body>\n";
+    $input .= "</html>\n";
+    
+    $expected_output =  "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .=  "<body>\n";
+    $expected_output .= "<p>This is a paragraph.</p>\n";
+    $expected_output .= "<p>This is another paragraph.</p>\n";
+    $expected_output .= "</body>\n";
+    $expected_output .= "\n";
+
+    is(HTML::CruftText::_remove_nonbody_text($input), $expected_output, '_remove_nonbody_text - Basic test');
+
+    # Multiple <body> elements
+    $input =  "<html>\n";
+    $input .= "<head>\n";
+    $input .= "  <title>This is a test</title>\n";
+    $input .= "</head>\n";
+    $input .= "<body>\n";
+    $input .= "<p>This is a paragraph.</p>\n";
+    $input .= "<p>This is another paragraph.</p>\n";
+    $input .= "</body>\n";
+    $input .= "</html>\n";
+    $input .= "<html>\n";
+    $input .= "<head>\n";
+    $input .= "  <title>This is a test</title>\n";
+    $input .= "</head>\n";
+    $input .= "<body>\n";
+    $input .= "<p>This is yet another paragraph.</p>\n";
+    $input .= "<p>This is the last paragraph.</p>\n";
+    $input .= "</body>\n";
+    $input .= "</html>\n";
+    
+    $expected_output =  "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "<body>\n";
+    $expected_output .= "<p>This is a paragraph.</p>\n";
+    $expected_output .= "<p>This is another paragraph.</p>\n";
+    $expected_output .= "</body>\n";
+    $expected_output .= "</html>\n";
+    $expected_output .= "<html>\n";
+    $expected_output .= "<head>\n";
+    $expected_output .= "  <title>This is a test</title>\n";
+    $expected_output .= "</head>\n";
+    $expected_output .= "<body>\n";
+    $expected_output .= "<p>This is yet another paragraph.</p>\n";
+    $expected_output .= "<p>This is the last paragraph.</p>\n";
+    $expected_output .= "</body>\n";
+    $expected_output .= "\n";
+
+    is(HTML::CruftText::_remove_nonbody_text($input), $expected_output, '_remove_nonbody_text - Multiple <body> elements');
+}
 
 sub main()
 {
     test_remove_tags_in_comments();
     test_fix_multiline_tags();
+    test_remove_nonbody_text();
 }
 
 main();
