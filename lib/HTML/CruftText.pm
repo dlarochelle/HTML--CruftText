@@ -121,10 +121,10 @@ sub _remove_nonbody_text($)
     my $html = shift;
 
     # Remove everything before the first <body>
-    $html =~ s/^(.*?)(<body)/_preserve_newlines($1).$2/sie;
+    $html =~ s/^(.*?)(<body)/_preserve_newlines($1).$2/sige;
 
     # Remove everything after the last </body>
-    $html =~ s/(.*)(<\/body>)(.*?)$/$1.$2._preserve_newlines($3)/sie;
+    $html =~ s/(.*)(<\/body>)(.*?)$/$1.$2._preserve_newlines($3)/sige;
 
     return $html;
 }
@@ -273,67 +273,17 @@ sub _get_string_after_comment_end_tags
 }
 
 # remove text wthin script, style, iframe, applet, and textarea tags
-sub _remove_script_text
+sub _remove_script_text($)
 {
-    my ( $lines ) = @_;
+    my $html = shift;
 
-    my $state = 'text';
-    my $start_scrub_tag_name;
+    foreach my $tag_to_remove (@{$_SCRUB_TAGS}) {
 
-    for ( my $i = 0 ; $i < @{ $lines } ; $i++ )
-    {
-        my $line = $lines->[ $i ];
+        $html =~ s/(<\Q$tag_to_remove\E\b[^>]*>)(.*?)(<\/\Q$tag_to_remove\E>)/$1._preserve_newlines($2).$3/sigex;
 
-        #print "line $i: $line\n";
-        my @scrubs;
-        my $start_scrub_pos = 0;
-        while ( $line =~ /(<(\/?[a-z]+)[^>]*>)/gi )
-        {
-            my $tag      = $1;
-            my $tag_name = $2;
-
-            #print "found tag $tag_name\n";
-            if ( $state eq 'text' )
-            {
-                if ( grep { lc( $tag_name ) eq $_ } @{ $_SCRUB_TAGS } )
-                {
-
-                    #print "found scrub tag\n";
-                    $state                = 'scrub_text';
-                    $start_scrub_pos      = pos( $line );
-                    $start_scrub_tag_name = $tag_name;
-                }
-            }
-            elsif ( $state eq 'scrub_text' )
-            {
-                if ( lc( $tag_name ) eq lc( "/$start_scrub_tag_name" ) )
-                {
-                    $state = 'text';
-                    my $end_scrub_pos = pos( $line ) - length( $tag );
-
-                    # delay actual scrubbing of text until the end so that we don't
-                    # have to reset the position of the state machine
-                    push( @scrubs, [ $start_scrub_pos, $end_scrub_pos - $start_scrub_pos ] );
-                }
-            }
-        }
-
-        if ( $state eq 'scrub_text' )
-        {
-            push( @scrubs, [ $start_scrub_pos, length( $line ) - $start_scrub_pos ] );
-        }
-
-        my $scrubbed_length = 0;
-        for my $scrub ( @scrubs )
-        {
-
-            #print "scrub line $i\n";
-            substr( $lines->[ $i ], $scrub->[ 0 ] - $scrubbed_length, $scrub->[ 1 ] ) = '';
-            $scrubbed_length += $scrub->[ 1 ];
-        }
-
-        #print "scrubbed line: $lines->[$i]\n";
     }
+
+    return $html;
 }
 
 
@@ -468,7 +418,8 @@ sub clearCruftText
     $html = _fix_multiline_tags( $html );
     _print_time( "fix multiline" );
 
-    _remove_script_text( $lines );
+    # _remove_script_text() is run before _remove_nonbody_text() because <script> elements might contain <body>
+    $html = _remove_script_text( $html );
     _print_time( "remove scripts" );
 
     $html = _remove_nonbody_text( $html );
