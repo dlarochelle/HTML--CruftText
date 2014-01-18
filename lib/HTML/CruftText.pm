@@ -314,6 +314,8 @@ sub clearCruftText
         $expected_number_of_lines = $html =~ s/[\n\r]+/\n/g;
     }
 
+    my $orig_html = $html;
+
     $html = _remove_tags_in_comments( $html );
     _print_time( "remove tags" );
 
@@ -337,9 +339,17 @@ sub clearCruftText
     # Make sure that the number of lines is the same as in the input
     my $processed_number_of_lines = scalar(@{ $lines });
     if ($expected_number_of_lines != $processed_number_of_lines) {
-        die "The number of lines changed after processing the input HTML "
-          . "(expected: $expected_number_of_lines; "
-          . "actual: $processed_number_of_lines)\n";
+
+        my $error = "The number of lines changed after processing the input HTML.\n";
+        $error .= "Expected # of lines: $expected_number_of_lines;";
+        $error .= "Actual # of lines: $processed_number_of_lines.\n";
+        $error .= "\n";
+        $error .= "Input HTML: " . $orig_html . "\n";
+        $error .= "\n";
+        $error .= "Output HTML: " . $html . "\n";
+        $error .= "\n";
+
+        warn $error;
     }
 
     return $lines;
