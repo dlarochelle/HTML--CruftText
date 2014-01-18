@@ -21,7 +21,7 @@ BEGIN
     use_ok( 'HTML::CruftText' );
 }
 
-sub test_remove_tags_in_comments()
+sub test_remove_comments()
 {
     my $input;
     my $expected_output;
@@ -37,7 +37,7 @@ sub test_remove_tags_in_comments()
     $expected_output .= "\n";
     $expected_output .= "        This is the rest of the body.\n";
 
-    is(HTML::CruftText::_remove_tags_in_comments($input), $expected_output, '_remove_tags_in_comments - Basic test');
+    is(HTML::CruftText::_remove_comments($input), $expected_output, '_remove_comments - Basic test');
 
     # Comment with '>' inside
     $input =  "        This is body.\n";
@@ -50,7 +50,7 @@ sub test_remove_tags_in_comments()
     $expected_output .= "\n";
     $expected_output .= "        This is the rest of the body.\n";
 
-    is(HTML::CruftText::_remove_tags_in_comments($input), $expected_output, '_remove_tags_in_comments - Comment with "<" and ">" inside');    
+    is(HTML::CruftText::_remove_comments($input), $expected_output, '_remove_comments - Comment with "<" and ">" inside');    
 }
 
 sub test_fix_multiline_tags()
@@ -274,7 +274,7 @@ sub test_remove_nonclickprint_text()
 
 sub main()
 {
-    test_remove_tags_in_comments();
+    test_remove_comments();
     test_fix_multiline_tags();
     test_remove_nonbody_text();
     test_remove_auxiliary_element_text();

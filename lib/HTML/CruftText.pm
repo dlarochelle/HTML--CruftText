@@ -57,7 +57,7 @@ sub _comment_contents_for_comment($)
 # Remove HTML comments retaining the number of lines;
 # remove >'s from inside comments so the simple line density scorer
 # doesn't get confused about where tags end
-sub _remove_tags_in_comments($)
+sub _remove_comments($)
 {
     my $html = shift;
 
@@ -312,8 +312,8 @@ sub clearCruftText
 
     my $orig_html = $html;
 
-    $html = _remove_tags_in_comments( $html );
-    _print_time( "remove tags" );
+    $html = _remove_comments( $html );
+    _print_time( "remove comments" );
 
     $html = _fix_multiline_tags( $html );
     _print_time( "fix multiline" );
@@ -336,16 +336,16 @@ sub clearCruftText
     my $processed_number_of_lines = scalar(@{ $lines });
     if ($expected_number_of_lines != $processed_number_of_lines) {
 
-        my $error = "The number of lines changed after processing the input HTML.\n";
-        $error .= "Expected # of lines: $expected_number_of_lines;";
-        $error .= "Actual # of lines: $processed_number_of_lines.\n";
-        $error .= "\n";
-        $error .= "Input HTML: " . $orig_html . "\n";
-        $error .= "\n";
-        $error .= "Output HTML: " . $html . "\n";
-        $error .= "\n";
+        # my $error = "The number of lines changed after processing the input HTML.\n";
+        # $error .= "Expected # of lines: $expected_number_of_lines;";
+        # $error .= "Actual # of lines: $processed_number_of_lines.\n";
+        # $error .= "\n";
+        # $error .= "Input HTML: " . $orig_html . "\n";
+        # $error .= "\n";
+        # $error .= "Output HTML: " . $html . "\n";
+        # $error .= "\n";
 
-        warn $error;
+        # warn $error;
     }
 
     return $lines;
