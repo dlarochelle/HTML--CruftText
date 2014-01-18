@@ -344,9 +344,9 @@ sub clearCruftText
         $error .= "Expected # of lines: $expected_number_of_lines;";
         $error .= "Actual # of lines: $processed_number_of_lines.\n";
         $error .= "\n";
-        $error .= "Input HTML: " . $orig_html . "\n";
+        $error .= "Input HTML: --cut--\n" . $orig_html . "\n--cut--\n";
         $error .= "\n";
-        $error .= "Output HTML: " . $html . "\n";
+        $error .= "Output HTML: --cut--\n" . $html . "\n--cut--\n";
         $error .= "\n";
 
         warn $error;
