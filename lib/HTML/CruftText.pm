@@ -379,9 +379,11 @@ sub has_clickprint($)
 }
 
 
-=head1 AUTHOR
+=head1 AUTHORS
 
 David Larochelle, C<< <dlarochelle at cyber.law.harvard.edu> >>
+
+Linas Valiukas, C<< <lvaliukas at cyber.law.harvard.edu> >>
 
 =head1 BUGS
 
