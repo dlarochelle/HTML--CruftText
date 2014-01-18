@@ -8,6 +8,7 @@ pod2htm*.tmp
 blib/
 _build/
 Makefile
+Makefile.old
 MYMETA.yml
 MYMETA.json
 Build
