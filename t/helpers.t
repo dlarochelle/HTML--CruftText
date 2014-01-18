@@ -69,7 +69,7 @@ sub test_fix_multiline_tags()
     $expected_output .= "<foo         bar>\n";
     $expected_output .= "        Some more text.";
 
-    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_remove_tags_in_comments - Basic test');
+    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_fix_multiline_tags - Basic test');
 
     # Text between tags
     $input =  "        Some text.\n";
@@ -84,7 +84,7 @@ sub test_fix_multiline_tags()
     $expected_output .= "<foo         bar>\n";
     $expected_output .= "        Even more text.";
 
-    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_remove_tags_in_comments - Text between tags');
+    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_fix_multiline_tags - Text between tags');
 
     # Tags on the same line
     $input =  "        Some text.\n";
@@ -97,7 +97,7 @@ sub test_fix_multiline_tags()
     $expected_output .= "        <bar>\n";
     $expected_output .= "        Some more text.";  # sans the last newline
 
-    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_remove_tags_in_comments - Taks on the same line');
+    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_fix_multiline_tags - Taks on the same line');
 }
 
 sub test_remove_nonbody_text()
