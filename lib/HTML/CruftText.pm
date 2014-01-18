@@ -309,7 +309,9 @@ sub clearCruftText
     } else {
         # String - change all line endings to Unix
         $html = $lines;
-        $expected_number_of_lines = $html =~ s/[\n\r]+/\n/g;
+
+        # 'x' linebreaks make 'x+1' lines (duh.)
+        $expected_number_of_lines = ($html =~ s/[\n\r]+/\n/g + 1);
     }
 
     my $orig_html = $html;
