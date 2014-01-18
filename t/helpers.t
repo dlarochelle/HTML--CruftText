@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 8 + 1 + 1;
+use Test::More tests => 9 + 1 + 1;
 use Test::NoWarnings;
 
 use Readonly;
@@ -211,12 +211,74 @@ sub test_remove_auxiliary_element_text()
     is(HTML::CruftText::_remove_auxiliary_element_text($input), $expected_output, '_remove_auxiliary_element_text - Basic test');
 }
 
+sub test_remove_nonclickprint_text()
+{
+    my $input;
+    my $expected_output;
+
+    # Basic test
+    $input =  "<html>\n";
+    $input .= "<head>\n";
+    $input .= "  <title>This is a test</title>\n";
+    $input .= "</head>\n";
+    $input .= "<body>\n";
+    $input .= "<p>This is removed.</p>\n";
+    $input .= "<!--startclickprintinclude-->\n";    # first include
+    $input .= "<p>This is included.</p>\n";
+    $input .= "<!--startclickprintexclude-->\n";
+    $input .= "<p>This is excluded.</p>\n";
+    $input .= "<p>This, too, is excluded.</p>\n";
+    $input .= "<!--endclickprintexclude-->\n";
+    $input .= "<p>This is also included.</p>\n";
+    $input .= "<!--endclickprintinclude-->\n";
+    $input .= "<p>This is removed as well.</p>\n";
+    $input .= "<!--startclickprintinclude-->\n";    # second include
+    $input .= "<p>This is included.</p>\n";
+    $input .= "<!--startclickprintexclude-->\n";
+    $input .= "<p>This is excluded.</p>\n";
+    $input .= "<p>This, too, is excluded.</p>\n";
+    $input .= "<!--endclickprintexclude-->\n";
+    $input .= "<p>This is also included.</p>\n";
+    $input .= "<!--endclickprintinclude-->\n";
+    $input .= "</body>\n";
+    $input .= "</html>\n";
+    
+    $expected_output =  "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "<!--startclickprintinclude-->\n";
+    $expected_output .= "<p>This is included.</p>\n";
+    $expected_output .= "<!--startclickprintexclude-->\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "<!--endclickprintexclude-->\n";
+    $expected_output .= "<p>This is also included.</p>\n";
+    $expected_output .= "<!--endclickprintinclude-->\n";
+    $expected_output .= "\n";
+    $expected_output .= "<!--startclickprintinclude-->\n";
+    $expected_output .= "<p>This is included.</p>\n";
+    $expected_output .= "<!--startclickprintexclude-->\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "<!--endclickprintexclude-->\n";
+    $expected_output .= "<p>This is also included.</p>\n";
+    $expected_output .= "<!--endclickprintinclude-->\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+
+    is(HTML::CruftText::_remove_nonclickprint_text($input), $expected_output, '_remove_nonclickprint_text - Basic test');
+}
+
 sub main()
 {
     test_remove_tags_in_comments();
     test_fix_multiline_tags();
     test_remove_nonbody_text();
     test_remove_auxiliary_element_text();
+    test_remove_nonclickprint_text();
 }
 
 main();

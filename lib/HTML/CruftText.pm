@@ -129,147 +129,49 @@ sub _remove_nonbody_text($)
     return $html;
 }
 
-sub _clickprint_start_line
+sub _remove_nonclickprint_text($)
 {
-    my ( $lines ) = @_;
+    my $html = shift;
 
-    my $i = 0;
-
-    my $found_clickprint = 0;
-
-    while ( ( $i < @{ $lines } ) && !$found_clickprint )
-    {
-        if ( $lines->[ $i ] =~ $_MARKER_PATTERNS->{ startclickprintinclude } )
-        {
-            $found_clickprint = 1;
-        }
-        else
-        {
-            $i++;
-        }
+    # Process the clickprint only if it's present in the HTML
+    unless (has_clickprint($html)) {
+        return $html;
     }
 
-    if ( !$found_clickprint )
-    {
-        return;
-    }
-    else
-    {
-        return $i;
+    # Remove excludes
+    $html =~ s/
 
-    }
-}
+        (<!--\s*startclickprintexclude\s*-->)
+        (.*?)
+        (<!--\s*endclickprintexclude\s*-->)
 
-sub _remove_nonclickprint_text
-{
-    my ( $lines, $clickprintmap ) = @_;
+        /$1._preserve_newlines($2).$3/sigex;
 
-    my $clickprint_start_line = _clickprint_start_line( $lines );
+    # Remove everything except what's between the first
+    # "startclickprintinclude" and the last "endclickprintinclude"
+    $html =~ s/
 
-    return if !defined( $clickprint_start_line );
+        ^(.*?)
+        (
+            <!--\s*startclickprintinclude\s*-->
+            .*  # greedy!
+            <!--\s*endclickprintinclude\s*-->
+        )
+        (.*?)$
 
-    # blank out all line before the first click_print
+        /_preserve_newlines($1).$2._preserve_newlines($3)/sigex;
 
-    for ( my $j = 0 ; $j < $clickprint_start_line ; $j++ )
-    {
-        $lines->[ $j ] = '';
-    }
+    # Remove "inbetween" leftover content between "endclickprintinclude" and
+    # "startclickprintinclude"
+    $html =~ s/
 
-    my $i = $clickprint_start_line;
+        (<!--\s*endclickprintinclude\s*-->)
+        (.*?)
+        (<!--\s*startclickprintinclude\s*-->)
 
-    my $current_substring = \$lines->[ $i ];
-    my $state             = "before_clickprint";
+        /$1._preserve_newlines($2).$3/sigex;
 
-    while ( $i < @{ $lines } )
-    {
-
-        #		print
-        #		  "i = $i state = $state current_substring = $$current_substring \n";
-
-        if ( $state eq "before_clickprint" )
-        {
-            if ( $$current_substring =~ $_MARKER_PATTERNS->{ startclickprintinclude } )
-            {
-                $$current_substring =~
-                  "s/.*?$_MARKER_PATTERNS->{startclickprintinclude}/$_MARKER_PATTERNS->{startclickprintinclude}/p";
-
-                $$current_substring =~ $_MARKER_PATTERNS->{ startclickprintinclude };
-
-                $current_substring = \substr( $$current_substring, length( ${^PREMATCH} ) + length( ${^MATCH} ) );
-
-                $current_substring = \_get_string_after_comment_end_tags( $current_substring );
-
-                $state = "in_click_print";
-            }
-            else
-            {
-                $$current_substring = '';
-            }
-        }
-
-        if ( $state eq 'in_click_print' )
-        {
-
-            #			print "in_click_print\n";
-            if ( $$current_substring =~ $_MARKER_PATTERNS->{ startclickprintexclude } )
-            {
-                $current_substring = \substr( $$current_substring, length( ${^MATCH} ) + length( ${^PREMATCH} ) );
-
-                $current_substring = \_get_string_after_comment_end_tags( $current_substring );
-                $state             = "in_click_print_exclude";
-
-            }
-            elsif ( $$current_substring =~ $_MARKER_PATTERNS->{ endclickprintinclude } )
-            {
-                $current_substring = \substr( $$current_substring, length( ${^MATCH} ) + length( ${^PREMATCH} ) );
-
-                $current_substring = \_get_string_after_comment_end_tags( $current_substring );
-
-                $state = 'before_clickprint';
-                next;
-            }
-        }
-
-        if ( $state eq 'in_click_print_exclude' )
-        {
-            if ( $$current_substring =~ $_MARKER_PATTERNS->{ endclickprintexclude } )
-            {
-                my $index = index( $$current_substring, $_MARKER_PATTERNS->{ endclickprintexclude } );
-
-                substr( $$current_substring, 0, length( ${^PREMATCH} ), '' );
-
-                $current_substring = \substr( $$current_substring, length( ${^MATCH} ) );
-
-                $current_substring = \_get_string_after_comment_end_tags( $current_substring );
-
-                $state = "in_click_print";
-                next;
-            }
-            else
-            {
-                $$current_substring = '';
-            }
-        }
-
-        $i++;
-        if ( $i < @{ $lines } )
-        {
-            $current_substring = \$lines->[ $i ];
-        }
-    }
-}
-
-sub _get_string_after_comment_end_tags
-{
-    my ( $current_substring, $i ) = @_;
-
-    my $comment_end_pos = 0;
-
-    if ( $$current_substring =~ /^\s*-->/p )
-    {
-        $comment_end_pos = length( ${^MATCH} );
-    }
-    return substr( $$current_substring, $comment_end_pos );
+    return $html;
 }
 
 # remove text within script, style, iframe, applet, and textarea tags
@@ -450,11 +352,20 @@ Returns false otherwise.
 
 =cut
 
-sub has_clickprint
+sub has_clickprint($)
 {
-    my ( $lines ) = @_;
+    my $lines = shift;
 
-    return defined( _clickprint_start_line( $lines ) );
+    if (ref ($lines)) {
+        # Arrayref
+        $lines = join ("\n", @{ $lines });
+    }
+
+    if ($lines =~ $_MARKER_PATTERNS->{ startclickprintinclude }) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 
