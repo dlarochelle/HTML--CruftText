@@ -91,7 +91,7 @@ sub test_fix_multiline_tags()
     $expected_output =  "        Some text.\n";
     $expected_output .= "        <foo >\n";
     $expected_output .= "<foo         bar>\n";
-    $expected_output .= "        Some more text.";
+    $expected_output .= "        Some more text.\n";
 
     is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_fix_multiline_tags - Basic test');
 
@@ -106,7 +106,7 @@ sub test_fix_multiline_tags()
     $expected_output .= "        <foo >\n";
     $expected_output .= "<foo         Some more text. >\n";
     $expected_output .= "<foo         bar>\n";
-    $expected_output .= "        Even more text.";
+    $expected_output .= "        Even more text.\n";
 
     is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_fix_multiline_tags - Text between tags');
 
@@ -119,7 +119,7 @@ sub test_fix_multiline_tags()
     $expected_output =  "        Some text.\n";
     $expected_output .= "        <foo>\n";
     $expected_output .= "        <bar>\n";
-    $expected_output .= "        Some more text.";  # sans the last newline
+    $expected_output .= "        Some more text.\n";  # sans the last newline
 
     is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_fix_multiline_tags - Tags on the same line');
 }

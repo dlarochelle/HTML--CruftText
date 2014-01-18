@@ -104,10 +104,6 @@ sub _fix_multiline_tags($)
 
         /_prepend_every_line_with_tag($1, $&)/sigex;
 
-    # Somehow the old implementation managed to strip the last linebreak from
-    # the resulting string, so we do this here too
-    $html =~ s/\n$//;
-
     return $html;
 }
 
@@ -332,6 +328,10 @@ sub clearCruftText
 
     $html = _remove_nonclickprint_text( $html );
     _print_time( "remove clickprint" );
+
+    # Remove the last newline (if there's one) because otherwise split() with
+    # -1 limit below will produce an unneeded empty line
+    $expected_number_of_lines -= $html =~ s/\n$//;
 
     # Return arrayref in all cases
     $lines = [ split( "\n", $html, -1 ) ];
