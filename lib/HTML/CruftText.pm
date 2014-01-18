@@ -104,10 +104,6 @@ sub _fix_multiline_tags($)
 
         /_prepend_every_line_with_tag($1, $&)/sigex;
 
-    # Somehow the old implementation managed to strip the last linebreak from
-    # the resulting string, so we do this here too
-    $html =~ s/\n$//;
-
     return $html;
 }
 
