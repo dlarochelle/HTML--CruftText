@@ -341,7 +341,7 @@ sub clearCruftText
     if ($expected_number_of_lines != $processed_number_of_lines) {
 
         my $error = "The number of lines changed after processing the input HTML.\n";
-        $error .= "Expected # of lines: $expected_number_of_lines;";
+        $error .= "Expected # of lines: $expected_number_of_lines;\n";
         $error .= "Actual # of lines: $processed_number_of_lines.\n";
         $error .= "\n";
         $error .= "Input HTML: --cut--\n" . $orig_html . "\n--cut--\n";
