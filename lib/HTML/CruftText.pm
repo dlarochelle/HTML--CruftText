@@ -330,7 +330,7 @@ sub clearCruftText
     _print_time( "remove clickprint" );
 
     # Return arrayref in all cases
-    $lines = [ split( /\n/, $html ) ];
+    $lines = [ split( "\n", $html, -1 ) ];
 
     # Make sure that the number of lines is the same as in the input
     my $processed_number_of_lines = scalar(@{ $lines });
