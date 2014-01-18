@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               HTML-CruftText
-version:            0.01
+version:            0.02
 abstract:           Remove unuseful text from HTML
 author:
     - David Larochelle <dlarochelle@cyber.law.harvard.edu>

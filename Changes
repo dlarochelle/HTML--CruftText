@@ -1,5 +1,18 @@
 Revision history for HTML-CruftText
 
+0.02    2014-01-18
+        * Replaced state machine-based implementation with a (faster) "regexp +
+          callback subroutine"-based implementation while also maintaining
+          backwards compatibility (both API and bugs are replicated too).
+        * Covered each of the internal subroutines ("helpers") with their very
+          own unit test so that one can now test those subroutines
+          independently.
+        * Covered successive newline removal behavior with unit tests.
+        * Fixed POD description regarding removal of HTML comments.
+        * Renamed some internal subroutines ("helpers") in order for their
+          names to better reflect what those subroutines are actually doing.
+        * Moved a list of ignored files to ".gitignore".
+
 0.01    Date/time
         First version, released on an unsuspecting world.
 
