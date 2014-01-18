@@ -330,7 +330,7 @@ sub clearCruftText
     $html = _remove_nonbody_text( $html );
     _print_time( "remove nonbody" );
 
-    _remove_nonclickprint_text( $lines );
+    $html = _remove_nonclickprint_text( $html );
     _print_time( "remove clickprint" );
 
     # Return arrayref in all cases
