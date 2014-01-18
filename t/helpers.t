@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 9 + 1 + 1;
+use Test::More tests => 10 + 1 + 1;
 use Test::NoWarnings;
 
 use Readonly;
@@ -50,7 +50,31 @@ sub test_remove_comments()
     $expected_output .= "\n";
     $expected_output .= "        This is the rest of the body.\n";
 
-    is(HTML::CruftText::_remove_comments($input), $expected_output, '_remove_comments - Comment with "<" and ">" inside');    
+    is(HTML::CruftText::_remove_comments($input), $expected_output, '_remove_comments - Comment with "<" and ">" inside');
+
+    # RDF comment
+    $input =  "             <!--\n";
+    $input .= "             <rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n";
+    $input .= "             xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n";
+    $input .= "             xmlns:trackback=\"http://madskills.com/public/xml/rss/module/trackback/\">\n";
+    $input .= "         <rdf:Description rdf:about=\"http://globalvoicesonline.org/2009/06/11/amplified-conversation-fighting-the-digital-crimes-bill-in-brazil/\"\n";
+    $input .= "    dc:identifier=\"http://globalvoicesonline.org/2009/06/11/amplified-conversation-fighting-the-digital-crimes-bill-in-brazil/\"\n";
+    $input .= "    dc:title=\"Brazil: Amplified conversations to fight the Digital Crimes Bill\"\n";
+    $input .= "    trackback:ping=\"http://globalvoicesonline.org/2009/06/11/amplified-conversation-fighting-the-digital-crimes-bill-in-brazil/trackback/\" />\n";
+    $input .= "</rdf:RDF>               -->\n";
+
+    $expected_output =  "             \n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+    $expected_output .= "\n";
+
+    is(HTML::CruftText::_remove_comments($input), $expected_output, '_remove_comments - RDF comment');
+
 }
 
 sub test_fix_multiline_tags()
