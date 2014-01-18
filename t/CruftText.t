@@ -327,6 +327,71 @@ ARTICLE TEXT
 </body>
 
 __END_TEST_CASE__
+    },
+    {
+        test_name  => 'successive_lines_1',
+        test_input => <<'__END_TEST_CASE__',
+
+
+x
+
+
+y
+
+
+z
+__END_TEST_CASE__
+        ,
+        test_output => <<'__END_TEST_CASE__',
+
+x
+y
+z
+__END_TEST_CASE__
+    },
+    {
+        test_name  => 'successive_lines_2',
+        test_input => <<'__END_TEST_CASE__',
+
+
+
+
+<html>
+
+
+
+<header>
+
+
+
+</header> <!---->
+
+
+
+<body>
+Real article text
+</body>
+<!-- end body -->
+
+
+
+</html>
+
+
+
+__END_TEST_CASE__
+        ,
+        test_output => <<'__END_TEST_CASE__',
+
+
+
+
+<body>
+Real article text
+</body>
+
+
+__END_TEST_CASE__
     }
   ];
 
