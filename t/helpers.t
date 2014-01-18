@@ -121,7 +121,7 @@ sub test_fix_multiline_tags()
     $expected_output .= "        <bar>\n";
     $expected_output .= "        Some more text.";  # sans the last newline
 
-    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_fix_multiline_tags - Taks on the same line');
+    is(HTML::CruftText::_fix_multiline_tags($input), $expected_output, '_fix_multiline_tags - Tags on the same line');
 }
 
 sub test_remove_nonbody_text()
