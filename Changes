@@ -1,5 +1,8 @@
 Revision history for HTML-CruftText
 
+0.05    2014-01-19
+        * Precompile regular expressions to gain some more speed.
+
 0.04    2014-01-19
         * Instead of removing <!-- contents of HTML comments --> altogether,
           make multiline comments single-line and replace "[<>]" characters
