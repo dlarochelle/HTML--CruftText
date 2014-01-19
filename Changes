@@ -1,5 +1,14 @@
 Revision history for HTML-CruftText
 
+0.04    2014-01-19
+        * Instead of removing <!-- contents of HTML comments --> altogether,
+          make multiline comments single-line and replace "[<>]" characters
+          with "|".
+        * Rename regexp callback subroutines to better explain what they're
+          doing.
+        * Remove precompiled regular expressions (didn't add any speed and
+          weren't that reusable).
+
 0.03    2014-01-19
         * Fixed handling of the last newline in the HTML page.
         * Fixed a way to count lines.
