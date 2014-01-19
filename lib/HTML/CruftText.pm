@@ -24,45 +24,55 @@ sub _remove_everything_except_newlines($)
     return "\n" x $newlines;    
 }
 
+
+my $_process_html_comment_regex_clickprint_comments = qr/^\s*(start|end)clickprint(in|ex)clude/ios;
+my $_process_html_comment_regex_brackets = qr/[<>]/os;
+
 sub _process_html_comment($)
 {
     my $data = shift;
 
     # Don't touch clickprint comments
-    if ($data =~ m/^\s*(start|end)clickprint(in|ex)clude/i) {
+    if ($data =~ $_process_html_comment_regex_clickprint_comments) {
         return $data;
     }
 
     # Replace ">" and "<" to "|"
-    $data =~ s/[<>]/|/gs;
+    $data =~ s/$_process_html_comment_regex_brackets/|/g;
 
-    # Prepend every line with comment
+    # Prepend every line with comment (not precompiled because trivial)
     $data =~ s/\n/ -->\n<!-- /gs;
 
     return $data;
 }
 
+
 sub _process_multiline_html_tag($$)
 {
     my ($tag_name, $data) = @_;
 
-    # Prepend each line with "<tag_name "
+    # Prepend each line with "<tag_name " (not precompiled because $tag_name
+    # always changes)
     $data =~ s/\n/ >\n$tag_name /gs;
 
     return $data;
 }
 
+
 # remove >'s from inside comments so the simple line density scorer
 # doesn't get confused about where tags end.
 # also, split multiline comments into multiple single line comments
+my $_remove_tags_in_comments_regex_html_comment = qr/<!--(.*?)-->/ios;
+
 sub _remove_tags_in_comments($)
 {
     my $html = shift;
 
-    $html =~ s/<!--(.*?)-->/'<!--'._process_html_comment($1).'-->'/sige;
+    $html =~ s/$_remove_tags_in_comments_regex_html_comment/'<!--'._process_html_comment($1).'-->'/eg;
 
     return $html;
 }
+
 
 # make sure that all tags start and close on one line
 # by adding false <>s as necessary, eg:
@@ -75,43 +85,79 @@ sub _remove_tags_in_comments($)
 # <foo>
 # <tag bar>
 #
+my $_fix_multiline_tags_regex_multiline_tag = qr/
+
+    # Start of the tag (e.g. "<foo")
+    (<[^\s>]*)
+
+    # Anything but the ">" and a linebreak (tag doesn't end on the same line)
+    [^>]*\n
+
+    # Any content up until the end of the tag (">")
+    [^>]*>
+
+    /iosx;
+
 sub _fix_multiline_tags($)
 {
     my $html = shift;
 
-    $html =~ s/
-
-        # Start of the tag (e.g. "<foo")
-        (<[^\s>]*)
-
-        # Anything but the ">" and a linebreak (tag doesn't end on the same line)
-        [^>]*\n
-
-        # Any content up until the end of the tag (">")
-        [^>]*>
-
-        /_process_multiline_html_tag($1, $&)/sigex;
+    $html =~ s/$_fix_multiline_tags_regex_multiline_tag/_process_multiline_html_tag($1, $&)/eg;
 
     return $html;
 }
+
 
 # Remove all text not within the <body> tag
 # Note: some badly formated web pages will have multiple <body> tags or will
 # not have an open tag.
 # We go the conservative thing of only deleting stuff before the first <body>
 # tag and stuff after the last </body> tag.
+my $_remove_nonbody_text_regex_before_first_body = qr/^(.*?)(<body)/ios;
+my $_remove_nonbody_text_regex_after_last_body = qr/(.*)(<\/body>)(.*?)$/ios;
+
 sub _remove_nonbody_text($)
 {
     my $html = shift;
 
     # Remove everything before the first <body>
-    $html =~ s/^(.*?)(<body)/_remove_everything_except_newlines($1).$2/sige;
+    $html =~ s/$_remove_nonbody_text_regex_before_first_body/_remove_everything_except_newlines($1).$2/eg;
 
     # Remove everything after the last </body>
-    $html =~ s/(.*)(<\/body>)(.*?)$/$1.$2._remove_everything_except_newlines($3)/sige;
+    $html =~ s/$_remove_nonbody_text_regex_after_last_body/$1.$2._remove_everything_except_newlines($3)/eg;
 
     return $html;
 }
+
+
+# If the HTML contains "clickprint" annotations, leave only text between them
+my $_remove_nonclickprint_text_regex_excludes = qr/
+
+    (<!--\s*startclickprintexclude\s*-->)
+    (.*?)
+    (<!--\s*endclickprintexclude\s*-->)
+
+    /iosx;
+
+my $_remove_nonclickprint_text_regex_everything_but_includes = qr/
+
+    ^(.*?)
+    (
+        <!--\s*startclickprintinclude\s*-->
+        .*  # greedy!
+        <!--\s*endclickprintinclude\s*-->
+    )
+    (.*?)$
+
+    /iosx;
+
+my $_remove_nonclickprint_text_regex_inbetween_includes = qr/
+
+    (<!--\s*endclickprintinclude\s*-->)
+    (.*?)
+    (<!--\s*startclickprintinclude\s*-->)
+
+    /iosx;
 
 sub _remove_nonclickprint_text($)
 {
@@ -123,50 +169,42 @@ sub _remove_nonclickprint_text($)
     }
 
     # Remove excludes
-    $html =~ s/
-
-        (<!--\s*startclickprintexclude\s*-->)
-        (.*?)
-        (<!--\s*endclickprintexclude\s*-->)
-
-        /$1._remove_everything_except_newlines($2).$3/sigex;
+    $html =~ s/$_remove_nonclickprint_text_regex_excludes/
+        $1 . _remove_everything_except_newlines($2) . $3/eg;
 
     # Remove everything except what's between the first
     # "startclickprintinclude" and the last "endclickprintinclude"
-    $html =~ s/
-
-        ^(.*?)
-        (
-            <!--\s*startclickprintinclude\s*-->
-            .*  # greedy!
-            <!--\s*endclickprintinclude\s*-->
-        )
-        (.*?)$
-
-        /_remove_everything_except_newlines($1).$2._remove_everything_except_newlines($3)/sigex;
+    $html =~ s/$_remove_nonclickprint_text_regex_everything_but_includes/
+        _remove_everything_except_newlines($1) . $2 . _remove_everything_except_newlines($3)/eg;
 
     # Remove "inbetween" leftover content between "endclickprintinclude" and
     # "startclickprintinclude"
-    $html =~ s/
-
-        (<!--\s*endclickprintinclude\s*-->)
-        (.*?)
-        (<!--\s*startclickprintinclude\s*-->)
-
-        /$1._remove_everything_except_newlines($2).$3/sigex;
+    $html =~ s/$_remove_nonclickprint_text_regex_inbetween_includes/
+        $1 . _remove_everything_except_newlines($2) . $3/eg;
 
     return $html;
 }
 
+
 # remove text within script, style, iframe, applet, and textarea tags
+my @_remove_auxiliary_element_text_regexes;
+foreach my $tag_to_remove (@{$_AUXILIARY_TAGS}) {
+
+    push (
+        @_remove_auxiliary_element_text_regexes,
+        qr/(<\Q$tag_to_remove\E\b[^>]*>)(.*?)(<\/\Q$tag_to_remove\E>)/ios
+    );
+}
+
+
 sub _remove_auxiliary_element_text($)
 {
     my $html = shift;
 
-    foreach my $tag_to_remove (@{$_AUXILIARY_TAGS}) {
+    foreach my $regex (@_remove_auxiliary_element_text_regexes) {
 
-        $html =~ s/(<\Q$tag_to_remove\E\b[^>]*>)(.*?)(<\/\Q$tag_to_remove\E>)/$1._remove_everything_except_newlines($2).$3/sigex;
-
+        $html =~ s/$regex/
+            $1 . _remove_everything_except_newlines($2) . $3/eg;
     }
 
     return $html;
@@ -297,6 +335,7 @@ sub clearCruftText
         $html = $lines;
 
         # 'x' linebreaks make 'x+1' lines (duh.)
+        # Not precompiled because trivial
         $expected_number_of_lines = ($html =~ s/[\n\r]+/\n/g + 1);
     }
 
@@ -352,6 +391,8 @@ Returns false otherwise.
 
 =cut
 
+my $_has_clickprint_regex_include = qr/<!--\s*startclickprintinclude/ios;
+
 sub has_clickprint($)
 {
     my $lines = shift;
@@ -361,7 +402,7 @@ sub has_clickprint($)
         $lines = join ("\n", @{ $lines });
     }
 
-    if ($lines =~ m/<!--\s*startclickprintinclude/i) {
+    if ($lines =~ $_has_clickprint_regex_include) {
         return 1;
     } else {
         return 0;
