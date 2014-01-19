@@ -263,7 +263,9 @@ The following tactics are used to remove cruft text:
 * clickprint markers -- many web sites have clickprint annotation comments that
   explicitly mark whether text should be included.
 
-* Removal of HTML tags in comments.
+* Removal of HTML tags in comments: we remove any HTML tags within <!-- -->
+  comments but keep other comment text. This makes the result easier to process
+  with regular expressions.
 
 * Close tags that span multiple lines within an single open tag. For example,
   we would change:
