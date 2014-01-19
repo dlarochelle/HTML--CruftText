@@ -10,29 +10,11 @@ use Data::Dumper;
 
 # STATICS
 
-# markers -- patterns used to find lines than can help find the text
-my $_MARKER_PATTERNS = {
-    startclickprintinclude => qr/<\!--\s*startclickprintinclude/pi,
-    endclickprintinclude   => qr/<\!--\s*endclickprintinclude/pi,
-    startclickprintexclude => qr/<\!--\s*startclickprintexclude/pi,
-    endclickprintexclude   => qr/<\!--\s*endclickprintexclude/pi,
-    sphereitbegin          => qr/<\!--\s*DISABLEsphereit\s*start/i,
-    sphereitend            => qr/<\!--\s*DISABLEsphereit\s*end/i,
-    body                   => qr/<body/i,
-    comment                => qr/(id|class)="[^"]*comment[^"]*"/i,
-
-    # Any clickprint comment
-    clickprint => qr/<\!--\s*(start|end)clickprint(in|ex)clude/pi,
-};
-
-#TODO handle sphereit like we're now handling CLickprint.
-
 # blank everything within these elements
 my $_AUXILIARY_TAGS = [ qw/script style frame applet textarea/ ];
 
 
-# Preserve newlines in the match
-sub _preserve_newlines($)
+sub _remove_everything_except_newlines($)
 {
     my $data = shift;
 
@@ -42,38 +24,44 @@ sub _preserve_newlines($)
     return "\n" x $newlines;    
 }
 
-
-# Decide upon the HTML comment's contents
-sub _comment_contents_for_comment($)
+sub _process_html_comment($)
 {
-    my $comment = shift;
+    my $data = shift;
 
     # Don't touch clickprint comments
-    return($comment) if ($comment =~ $_MARKER_PATTERNS->{clickprint});
+    if ($data =~ m/^\s*(start|end)clickprint(in|ex)clude/i) {
+        return $data;
+    }
 
-    return _preserve_newlines($comment);
+    # Replace ">" and "<" to "|"
+    $data =~ s/[<>]/|/gs;
+
+    # Prepend every line with comment
+    $data =~ s/\n/ -->\n<!-- /gs;
+
+    return $data;
 }
 
-# Remove HTML comments retaining the number of lines;
-# remove >'s from inside comments so the simple line density scorer
-# doesn't get confused about where tags end
-sub _remove_comments($)
-{
-    my $html = shift;
-
-    $html =~ s/<!--(.*?)-->/_comment_contents_for_comment($&)/sige;
-
-    return $html;
-}
-
-
-sub _prepend_every_line_with_tag($$)
+sub _process_multiline_html_tag($$)
 {
     my ($tag_name, $data) = @_;
 
+    # Prepend each line with "<tag_name "
     $data =~ s/\n/ >\n$tag_name /gs;
 
     return $data;
+}
+
+# remove >'s from inside comments so the simple line density scorer
+# doesn't get confused about where tags end.
+# also, split multiline comments into multiple single line comments
+sub _remove_tags_in_comments($)
+{
+    my $html = shift;
+
+    $html =~ s/<!--(.*?)-->/'<!--'._process_html_comment($1).'-->'/sige;
+
+    return $html;
 }
 
 # make sure that all tags start and close on one line
@@ -102,7 +90,7 @@ sub _fix_multiline_tags($)
         # Any content up until the end of the tag (">")
         [^>]*>
 
-        /_prepend_every_line_with_tag($1, $&)/sigex;
+        /_process_multiline_html_tag($1, $&)/sigex;
 
     return $html;
 }
@@ -117,10 +105,10 @@ sub _remove_nonbody_text($)
     my $html = shift;
 
     # Remove everything before the first <body>
-    $html =~ s/^(.*?)(<body)/_preserve_newlines($1).$2/sige;
+    $html =~ s/^(.*?)(<body)/_remove_everything_except_newlines($1).$2/sige;
 
     # Remove everything after the last </body>
-    $html =~ s/(.*)(<\/body>)(.*?)$/$1.$2._preserve_newlines($3)/sige;
+    $html =~ s/(.*)(<\/body>)(.*?)$/$1.$2._remove_everything_except_newlines($3)/sige;
 
     return $html;
 }
@@ -141,7 +129,7 @@ sub _remove_nonclickprint_text($)
         (.*?)
         (<!--\s*endclickprintexclude\s*-->)
 
-        /$1._preserve_newlines($2).$3/sigex;
+        /$1._remove_everything_except_newlines($2).$3/sigex;
 
     # Remove everything except what's between the first
     # "startclickprintinclude" and the last "endclickprintinclude"
@@ -155,7 +143,7 @@ sub _remove_nonclickprint_text($)
         )
         (.*?)$
 
-        /_preserve_newlines($1).$2._preserve_newlines($3)/sigex;
+        /_remove_everything_except_newlines($1).$2._remove_everything_except_newlines($3)/sigex;
 
     # Remove "inbetween" leftover content between "endclickprintinclude" and
     # "startclickprintinclude"
@@ -165,7 +153,7 @@ sub _remove_nonclickprint_text($)
         (.*?)
         (<!--\s*startclickprintinclude\s*-->)
 
-        /$1._preserve_newlines($2).$3/sigex;
+        /$1._remove_everything_except_newlines($2).$3/sigex;
 
     return $html;
 }
@@ -177,7 +165,7 @@ sub _remove_auxiliary_element_text($)
 
     foreach my $tag_to_remove (@{$_AUXILIARY_TAGS}) {
 
-        $html =~ s/(<\Q$tag_to_remove\E\b[^>]*>)(.*?)(<\/\Q$tag_to_remove\E>)/$1._preserve_newlines($2).$3/sigex;
+        $html =~ s/(<\Q$tag_to_remove\E\b[^>]*>)(.*?)(<\/\Q$tag_to_remove\E>)/$1._remove_everything_except_newlines($2).$3/sigex;
 
     }
 
@@ -314,8 +302,8 @@ sub clearCruftText
 
     my $orig_html = $html;
 
-    $html = _remove_comments( $html );
-    _print_time( "remove comments" );
+    $html = _remove_tags_in_comments( $html );
+    _print_time( "remove tags" );
 
     $html = _fix_multiline_tags( $html );
     _print_time( "fix multiline" );
@@ -373,7 +361,7 @@ sub has_clickprint($)
         $lines = join ("\n", @{ $lines });
     }
 
-    if ($lines =~ $_MARKER_PATTERNS->{ startclickprintinclude }) {
+    if ($lines =~ m/<!--\s*startclickprintinclude/i) {
         return 1;
     } else {
         return 0;

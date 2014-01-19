@@ -21,7 +21,7 @@ BEGIN
     use_ok( 'HTML::CruftText' );
 }
 
-sub test_remove_comments()
+sub test_remove_tags_in_comments()
 {
     my $input;
     my $expected_output;
@@ -32,12 +32,12 @@ sub test_remove_comments()
     $input .= "             multiline comment. -->\n";
     $input .= "        This is the rest of the body.\n";
 
-    $expected_output = "        This is body.\n";
-    $expected_output .= "        \n";
-    $expected_output .= "\n";
+    $expected_output =  "        This is body.\n";
+    $expected_output .= "        <!-- This is a -->\n";
+    $expected_output .= "<!--              multiline comment. -->\n";
     $expected_output .= "        This is the rest of the body.\n";
 
-    is(HTML::CruftText::_remove_comments($input), $expected_output, '_remove_comments - Basic test');
+    is(HTML::CruftText::_remove_tags_in_comments($input), $expected_output, '_remove_tags_in_comments - Basic test');
 
     # Comment with '>' inside
     $input =  "        This is body.\n";
@@ -45,12 +45,12 @@ sub test_remove_comments()
     $input .= "             multiline comment that includes <<, > and whatnot. -->\n";
     $input .= "        This is the rest of the body.\n";
 
-    $expected_output = "        This is body.\n";
-    $expected_output .= "        \n";
-    $expected_output .= "\n";
+    $expected_output =  "        This is body.\n";
+    $expected_output .= "        <!-- This is a -->\n";
+    $expected_output .= "<!--              multiline comment that includes ||, | and whatnot. -->\n";
     $expected_output .= "        This is the rest of the body.\n";
 
-    is(HTML::CruftText::_remove_comments($input), $expected_output, '_remove_comments - Comment with "<" and ">" inside');
+    is(HTML::CruftText::_remove_tags_in_comments($input), $expected_output, '_remove_tags_in_comments - Comment with "<" and ">" inside');
 
     # RDF comment
     $input =  "             <!--\n";
@@ -63,17 +63,17 @@ sub test_remove_comments()
     $input .= "    trackback:ping=\"http://globalvoicesonline.org/2009/06/11/amplified-conversation-fighting-the-digital-crimes-bill-in-brazil/trackback/\" />\n";
     $input .= "</rdf:RDF>               -->\n";
 
-    $expected_output =  "             \n";
-    $expected_output .= "\n";
-    $expected_output .= "\n";
-    $expected_output .= "\n";
-    $expected_output .= "\n";
-    $expected_output .= "\n";
-    $expected_output .= "\n";
-    $expected_output .= "\n";
-    $expected_output .= "\n";
+    $expected_output =  "             <!-- -->\n";
+    $expected_output .= "<!--              |rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" -->\n";
+    $expected_output .= "<!--              xmlns:dc=\"http://purl.org/dc/elements/1.1/\" -->\n";
+    $expected_output .= "<!--              xmlns:trackback=\"http://madskills.com/public/xml/rss/module/trackback/\"| -->\n";
+    $expected_output .= "<!--          |rdf:Description rdf:about=\"http://globalvoicesonline.org/2009/06/11/amplified-conversation-fighting-the-digital-crimes-bill-in-brazil/\" -->\n";
+    $expected_output .= "<!--     dc:identifier=\"http://globalvoicesonline.org/2009/06/11/amplified-conversation-fighting-the-digital-crimes-bill-in-brazil/\" -->\n";
+    $expected_output .= "<!--     dc:title=\"Brazil: Amplified conversations to fight the Digital Crimes Bill\" -->\n";
+    $expected_output .= "<!--     trackback:ping=\"http://globalvoicesonline.org/2009/06/11/amplified-conversation-fighting-the-digital-crimes-bill-in-brazil/trackback/\" /| -->\n";
+    $expected_output .= "<!-- |/rdf:RDF|               -->\n";
 
-    is(HTML::CruftText::_remove_comments($input), $expected_output, '_remove_comments - RDF comment');
+    is(HTML::CruftText::_remove_tags_in_comments($input), $expected_output, '_remove_tags_in_comments - RDF comment');
 
 }
 
@@ -298,7 +298,7 @@ sub test_remove_nonclickprint_text()
 
 sub main()
 {
-    test_remove_comments();
+    test_remove_tags_in_comments();
     test_fix_multiline_tags();
     test_remove_nonbody_text();
     test_remove_auxiliary_element_text();

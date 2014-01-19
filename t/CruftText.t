@@ -223,6 +223,7 @@ JUNK STRING
 Real article text
 This is the comment, <!-- Hello there!
 Here goes another line of the comment.
+There are some <html> <elements /> in this comment as well.
 And hey, <!-- look, comment in a comment!
 But this is --> where the comment ends.
 </body>
@@ -240,10 +241,11 @@ JUNK STRING
 </header>
 <body>
 Real article text
-This is the comment, 
-
-
- where the comment ends.
+This is the comment, <!-- Hello there! -->
+<!-- Here goes another line of the comment. -->
+<!-- There are some |html| |elements /| in this comment as well. -->
+<!-- And hey, |!-- look, comment in a comment! -->
+<!-- But this is --> where the comment ends.
 </body>
 
 __END_TEST_CASE__
