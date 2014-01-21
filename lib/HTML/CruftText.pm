@@ -114,7 +114,6 @@ sub _fix_multiline_tags($)
 # We go the conservative thing of only deleting stuff before the first <body>
 # tag and stuff after the last </body> tag.
 my $_remove_nonbody_text_regex_before_first_body = qr/^(.*?)(<body)/ios;
-my $_remove_nonbody_text_regex_after_last_body = qr/(.*)(<\/body>)(.*?)$/ios;
 
 sub _remove_nonbody_text($)
 {
@@ -124,7 +123,14 @@ sub _remove_nonbody_text($)
     $html =~ s/$_remove_nonbody_text_regex_before_first_body/_remove_everything_except_newlines($1).$2/eg;
 
     # Remove everything after the last </body>
-    $html =~ s/$_remove_nonbody_text_regex_after_last_body/$1.$2._remove_everything_except_newlines($3)/eg;
+    # (look-ahead regex was superslow, so we do it like it's 1995 again)
+    # FIXME: if there's a non-lowercase "</body>" (e.g. "</BODY>"), the method
+    # will return a lowercase one
+    my @bodies = split(/<\/body>/is, $html);
+    if (scalar @bodies > 1) {   # if there's at least one "</body>"
+        $bodies[-1] = _remove_everything_except_newlines($bodies[-1]);
+    }
+    $html = join('</body>', @bodies);
 
     return $html;
 }
