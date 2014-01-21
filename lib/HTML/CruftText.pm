@@ -6,13 +6,25 @@ use warnings;
 
 use Time::HiRes;
 use List::MoreUtils qw(first_index indexes last_index);
-use Data::Dumper;
 
 # STATICS
 
-# blank everything within these elements
-my $_AUXILIARY_TAGS = [ qw/script style frame applet textarea/ ];
+# markers -- patterns used to find lines than can help find the text
+my $_MARKER_PATTERNS = {
+    startclickprintinclude => qr/<\!--\s*startclickprintinclude/pi,
+    endclickprintinclude   => qr/<\!--\s*endclickprintinclude/pi,
+    startclickprintexclude => qr/<\!--\s*startclickprintexclude/pi,
+    endclickprintexclude   => qr/<\!--\s*endclickprintexclude/pi,
+    sphereitbegin          => qr/<\!--\s*DISABLEsphereit\s*start/i,
+    sphereitend            => qr/<\!--\s*DISABLEsphereit\s*end/i,
+    body                   => qr/<body/i,
+    comment                => qr/(id|class)="[^"]*comment[^"]*"/i,
+};
 
+#TODO handle sphereit like we're now handling CLickprint.
+
+# blank everything within these elements
+my $_SCRUB_TAGS = [ qw/script style frame applet textarea/ ];
 
 sub _remove_everything_except_newlines($)
 {
@@ -46,19 +58,6 @@ sub _process_html_comment($)
     return $data;
 }
 
-
-sub _process_multiline_html_tag($$)
-{
-    my ($tag_name, $data) = @_;
-
-    # Prepend each line with "<tag_name " (not precompiled because $tag_name
-    # always changes)
-    $data =~ s/\n/ >\n$tag_name /gs;
-
-    return $data;
-}
-
-
 # remove >'s from inside comments so the simple line density scorer
 # doesn't get confused about where tags end.
 # also, split multiline comments into multiple single line comments
@@ -66,13 +65,17 @@ my $_remove_tags_in_comments_regex_html_comment = qr/<!--(.*?)-->/ios;
 
 sub _remove_tags_in_comments($)
 {
-    my $html = shift;
+    my $lines = shift;
 
+    my $html = join("\n", @{ $lines });
+
+    # Remove ">" and "<" in comments
     $html =~ s/$_remove_tags_in_comments_regex_html_comment/'<!--'._process_html_comment($1).'-->'/eg;
 
-    return $html;
-}
+    $lines = [ split("\n", $html) ];
 
+    return $lines;
+}
 
 # make sure that all tags start and close on one line
 # by adding false <>s as necessary, eg:
@@ -85,135 +88,276 @@ sub _remove_tags_in_comments($)
 # <foo>
 # <tag bar>
 #
-my $_fix_multiline_tags_regex_multiline_tag = qr/
-
-    # Start of the tag (e.g. "<foo")
-    (<[^\s>]*)
-
-    # Anything but the ">" and a linebreak (tag doesn't end on the same line)
-    [^>]*\n
-
-    # Any content up until the end of the tag (">")
-    [^>]*>
-
-    /iosx;
-
-sub _fix_multiline_tags($)
+sub _fix_multiline_tags
 {
-    my $html = shift;
+    my ( $lines ) = @_;
 
-    $html =~ s/$_fix_multiline_tags_regex_multiline_tag/_process_multiline_html_tag($1, $&)/eg;
+    my $add_start_tag;
+    for ( my $i = 0 ; $i < @{ $lines } ; $i++ )
+    {
+        if ( $add_start_tag )
+        {
+            $lines->[ $i ] = "<$add_start_tag " . $lines->[ $i ];
+            $add_start_tag = undef;
+        }
 
-    return $html;
-}
-
-
-# Remove all text not within the <body> tag
-# Note: some badly formated web pages will have multiple <body> tags or will
-# not have an open tag.
-# We go the conservative thing of only deleting stuff before the first <body>
-# tag and stuff after the last </body> tag.
-my $_remove_nonbody_text_regex_before_first_body = qr/^(.*?)(<body)/ios;
-
-sub _remove_nonbody_text($)
-{
-    my $html = shift;
-
-    # Remove everything before the first <body>
-    $html =~ s/$_remove_nonbody_text_regex_before_first_body/_remove_everything_except_newlines($1).$2/eg;
-
-    # Remove everything after the last </body>
-    # (look-ahead regex was superslow, so we do it like it's 1995 again)
-    # FIXME: if there's a non-lowercase "</body>" (e.g. "</BODY>"), the method
-    # will return a lowercase one
-    my @bodies = split(/<\/body>/is, $html);
-    if (scalar @bodies > 1) {   # if there's at least one "</body>"
-        $bodies[-1] = _remove_everything_except_newlines($bodies[-1]);
+        if ( $lines->[ $i ] =~ /<([^ >]*)[^>]*$/ )
+        {
+            $add_start_tag = $1;
+            $lines->[ $i ] .= ' >';
+        }
     }
-    $html = join('</body>', @bodies);
-
-    return $html;
 }
 
-
-# If the HTML contains "clickprint" annotations, leave only text between them
-my $_remove_nonclickprint_text_regex_excludes = qr/
-
-    (<!--\s*startclickprintexclude\s*-->)
-    (.*?)
-    (<!--\s*endclickprintexclude\s*-->)
-
-    /iosx;
-
-my $_remove_nonclickprint_text_regex_everything_but_includes = qr/
-
-    ^(.*?)
-    (
-        <!--\s*startclickprintinclude\s*-->
-        .*  # greedy!
-        <!--\s*endclickprintinclude\s*-->
-    )
-    (.*?)$
-
-    /iosx;
-
-my $_remove_nonclickprint_text_regex_inbetween_includes = qr/
-
-    (<!--\s*endclickprintinclude\s*-->)
-    (.*?)
-    (<!--\s*startclickprintinclude\s*-->)
-
-    /iosx;
-
-sub _remove_nonclickprint_text($)
+#remove all text not within the <body> tag
+#Note: Some badly formated web pages will have multiple <body> tags or will not have an open tag.
+#We go the conservative thing of only deleting stuff before the first <body> tag and stuff after the last </body> tag.
+sub _remove_nonbody_text
 {
-    my $html = shift;
+    my ( $lines ) = @_;
 
-    # Process the clickprint only if it's present in the HTML
-    unless (has_clickprint($html)) {
-        return $html;
+    my $add_start_tag;
+
+    my $state = 'before_body';
+
+    my $body_open_tag_line_number = first_index { $_ =~ /<body/i } @{ $lines };
+
+    if ( $body_open_tag_line_number != -1 )
+    {
+
+        #delete everything before <body>
+        for ( my $line_number_to_clear = 0 ; $line_number_to_clear < $body_open_tag_line_number ; $line_number_to_clear++ )
+        {
+            $lines->[ $line_number_to_clear ] = '';
+        }
+
+        $lines->[ $body_open_tag_line_number ] =~ s/^.*?\<body/<body/i;
     }
 
-    # Remove excludes
-    $html =~ s/$_remove_nonclickprint_text_regex_excludes/
-        $1 . _remove_everything_except_newlines($2) . $3/eg;
+    my $body_close_tag_line_number = last_index { $_ =~ /<\/body/i } @{ $lines };
 
-    # Remove everything except what's between the first
-    # "startclickprintinclude" and the last "endclickprintinclude"
-    $html =~ s/$_remove_nonclickprint_text_regex_everything_but_includes/
-        _remove_everything_except_newlines($1) . $2 . _remove_everything_except_newlines($3)/eg;
+    if ( $body_close_tag_line_number != -1 )
+    {
 
-    # Remove "inbetween" leftover content between "endclickprintinclude" and
-    # "startclickprintinclude"
-    $html =~ s/$_remove_nonclickprint_text_regex_inbetween_includes/
-        $1 . _remove_everything_except_newlines($2) . $3/eg;
+        #delete everything after </body>
 
-    return $html;
+        $lines->[ $body_close_tag_line_number ] =~ s/<\/body>.*/<\/body>/i;
+        for (
+            my $line_number_to_clear = ( $body_close_tag_line_number + 1 ) ;
+            $line_number_to_clear < scalar( @{ $lines } ) ;
+            $line_number_to_clear++
+          )
+        {
+            $lines->[ $line_number_to_clear ] = '';
+        }
+    }
 }
 
-
-# remove text within script, style, iframe, applet, and textarea tags
-my @_remove_auxiliary_element_text_regexes;
-foreach my $tag_to_remove (@{$_AUXILIARY_TAGS}) {
-
-    push (
-        @_remove_auxiliary_element_text_regexes,
-        qr/(<\Q$tag_to_remove\E\b[^>]*>)(.*?)(<\/\Q$tag_to_remove\E>)/ios
-    );
-}
-
-
-sub _remove_auxiliary_element_text($)
+sub _clickprint_start_line
 {
-    my $html = shift;
+    my ( $lines ) = @_;
 
-    foreach my $regex (@_remove_auxiliary_element_text_regexes) {
+    my $i = 0;
 
-        $html =~ s/$regex/
-            $1 . _remove_everything_except_newlines($2) . $3/eg;
+    my $found_clickprint = 0;
+
+    while ( ( $i < @{ $lines } ) && !$found_clickprint )
+    {
+        if ( $lines->[ $i ] =~ $_MARKER_PATTERNS->{ startclickprintinclude } )
+        {
+            $found_clickprint = 1;
+        }
+        else
+        {
+            $i++;
+        }
     }
 
-    return $html;
+    if ( !$found_clickprint )
+    {
+        return;
+    }
+    else
+    {
+        return $i;
+
+    }
+}
+
+sub _remove_nonclickprint_text
+{
+    my ( $lines, $clickprintmap ) = @_;
+
+    my $clickprint_start_line = _clickprint_start_line( $lines );
+
+    return if !defined( $clickprint_start_line );
+
+    # blank out all line before the first click_print
+
+    for ( my $j = 0 ; $j < $clickprint_start_line ; $j++ )
+    {
+        $lines->[ $j ] = '';
+    }
+
+    my $i = $clickprint_start_line;
+
+    my $current_substring = \$lines->[ $i ];
+    my $state             = "before_clickprint";
+
+    while ( $i < @{ $lines } )
+    {
+
+        #		print
+        #		  "i = $i state = $state current_substring = $$current_substring \n";
+
+        if ( $state eq "before_clickprint" )
+        {
+            if ( $$current_substring =~ $_MARKER_PATTERNS->{ startclickprintinclude } )
+            {
+                $$current_substring =~
+                  "s/.*?$_MARKER_PATTERNS->{startclickprintinclude}/$_MARKER_PATTERNS->{startclickprintinclude}/p";
+
+                $$current_substring =~ $_MARKER_PATTERNS->{ startclickprintinclude };
+
+                $current_substring = \substr( $$current_substring, length( ${^PREMATCH} ) + length( ${^MATCH} ) );
+
+                $current_substring = \_get_string_after_comment_end_tags( $current_substring );
+
+                $state = "in_click_print";
+            }
+            else
+            {
+                $$current_substring = '';
+            }
+        }
+
+        if ( $state eq 'in_click_print' )
+        {
+
+            #			print "in_click_print\n";
+            if ( $$current_substring =~ $_MARKER_PATTERNS->{ startclickprintexclude } )
+            {
+                $current_substring = \substr( $$current_substring, length( ${^MATCH} ) + length( ${^PREMATCH} ) );
+
+                $current_substring = \_get_string_after_comment_end_tags( $current_substring );
+                $state             = "in_click_print_exclude";
+
+            }
+            elsif ( $$current_substring =~ $_MARKER_PATTERNS->{ endclickprintinclude } )
+            {
+                $current_substring = \substr( $$current_substring, length( ${^MATCH} ) + length( ${^PREMATCH} ) );
+
+                $current_substring = \_get_string_after_comment_end_tags( $current_substring );
+
+                $state = 'before_clickprint';
+                next;
+            }
+        }
+
+        if ( $state eq 'in_click_print_exclude' )
+        {
+            if ( $$current_substring =~ $_MARKER_PATTERNS->{ endclickprintexclude } )
+            {
+                my $index = index( $$current_substring, $_MARKER_PATTERNS->{ endclickprintexclude } );
+
+                substr( $$current_substring, 0, length( ${^PREMATCH} ), '' );
+
+                $current_substring = \substr( $$current_substring, length( ${^MATCH} ) );
+
+                $current_substring = \_get_string_after_comment_end_tags( $current_substring );
+
+                $state = "in_click_print";
+                next;
+            }
+            else
+            {
+                $$current_substring = '';
+            }
+        }
+
+        $i++;
+        if ( $i < @{ $lines } )
+        {
+            $current_substring = \$lines->[ $i ];
+        }
+    }
+}
+
+sub _get_string_after_comment_end_tags
+{
+    my ( $current_substring, $i ) = @_;
+
+    my $comment_end_pos = 0;
+
+    if ( $$current_substring =~ /^\s*-->/p )
+    {
+        $comment_end_pos = length( ${^MATCH} );
+    }
+    return substr( $$current_substring, $comment_end_pos );
+}
+
+# remove text wthin script, style, iframe, applet, and textarea tags
+sub _remove_script_text
+{
+    my ( $lines ) = @_;
+
+    my $state = 'text';
+    my $start_scrub_tag_name;
+
+    for ( my $i = 0 ; $i < @{ $lines } ; $i++ )
+    {
+        my $line = $lines->[ $i ];
+
+        #print "line $i: $line\n";
+        my @scrubs;
+        my $start_scrub_pos = 0;
+        while ( $line =~ /(<(\/?[a-z]+)[^>]*>)/gi )
+        {
+            my $tag      = $1;
+            my $tag_name = $2;
+
+            #print "found tag $tag_name\n";
+            if ( $state eq 'text' )
+            {
+                if ( grep { lc( $tag_name ) eq $_ } @{ $_SCRUB_TAGS } )
+                {
+
+                    #print "found scrub tag\n";
+                    $state                = 'scrub_text';
+                    $start_scrub_pos      = pos( $line );
+                    $start_scrub_tag_name = $tag_name;
+                }
+            }
+            elsif ( $state eq 'scrub_text' )
+            {
+                if ( lc( $tag_name ) eq lc( "/$start_scrub_tag_name" ) )
+                {
+                    $state = 'text';
+                    my $end_scrub_pos = pos( $line ) - length( $tag );
+
+                    # delay actual scrubbing of text until the end so that we don't
+                    # have to reset the position of the state machine
+                    push( @scrubs, [ $start_scrub_pos, $end_scrub_pos - $start_scrub_pos ] );
+                }
+            }
+        }
+
+        if ( $state eq 'scrub_text' )
+        {
+            push( @scrubs, [ $start_scrub_pos, length( $line ) - $start_scrub_pos ] );
+        }
+
+        my $scrubbed_length = 0;
+        for my $scrub ( @scrubs )
+        {
+
+            #print "scrub line $i\n";
+            substr( $lines->[ $i ], $scrub->[ 0 ] - $scrubbed_length, $scrub->[ 1 ] ) = '';
+            $scrubbed_length += $scrub->[ 1 ];
+        }
+
+        #print "scrubbed line: $lines->[$i]\n";
+    }
 }
 
 
@@ -244,19 +388,18 @@ HTML::CruftText - Remove unuseful text from HTML
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 
 =head1 SYNOPSIS
 
-Removes junk from HTML page text.
+Removes junk from HTML page text. 
 
-This module uses a regular expression based approach to remove cruft from HTML.
-I.e. content/text that is very unlikely to be useful or interesting.
+This module uses a regular expression based approach to remove cruft from HTML. I.e. content/text that is very unlikely to be useful or interesting.
 
 
     use HTML::CruftText;
@@ -271,36 +414,21 @@ I.e. content/text that is very unlikely to be useful or interesting.
 
 =head1 DESCRIPTION
 
-This module was developed for the Media Cloud project (http://mediacloud.org) as
-the first step in differentiating article text from ads, navigation, and other
-boilerplate text. Its approach is very conservative and almost never removes
-legitimate article text. However, it still leaves in a lot of cruft so many
-users will want to do additional processing.
+This module was developed for the Media Cloud project (http://mediacloud.org) as the first step in differentiating article text from ads, navigation, and other boilerplate text. Its approach is very conservative and almost never removes legitimate article text. However, it still leaves in a lot of cruft so many users will want to do additional processing.
 
-Typically, the clearCruftText method is called with an array reference
-containing the lines of an HTML file. Each line is then altered so that the
-cruft text is removed. After completion some lines will be entirely blank, while
-others will have certain text removed. In a few rare cases, additional HTML tags
-are added. The result is NOT GUARANTEED to be valid, balanced HTML though some
-HTML is retained because it is extremely useful for further processing. Thus
-some users will want to run an HTML stripper over the results.
+Typically, the clearCruftText method is called with an array reference containing the lines of an HTML file. Each line is then altered so that the cruft text is removed. After completion some lines will be entirely blank, while others will have certain text removed. In a few rare cases, additional HTML tags are added. The result is NOT GUARANTEED to be valid, balanced HTML though some HTML is retained because it is extremely useful for further processing. Thus some users will want to run an HTML stripper over the results.
 
 The following tactics are used to remove cruft text:
 
 * Nonbody text --anything outside of the <body></body> tags -- is removed
 
-* Text within the following tags is removed: <script>, <style>, <frame>,
-  <applet>, and <textarea>
+* Text within the following tags is removed: <script>, <style>, <frame>, <applet>, and <textarea>
 
-* clickprint markers -- many web sites have clickprint annotation comments that
-  explicitly mark whether text should be included.
+* clickprint markers -- many web sites have clickprint annotation comments that explicitly mark whether text should be included.
 
-* Removal of HTML tags in comments: we remove any HTML tags within <!-- -->
-  comments but keep other comment text. This makes the result easier to process
-  with regular expressions.
+* Removal of HTML tags in comments: we remove any HTML tags within <!-- --> comments but keep other comment text. This makes the result easier to process with regular expressions.
 
-* Close tags that span multiple lines within an single open tag. For example,
-  we would change:
+* Close tags that span multiple lines within an single open tag. For example, we would change:
 
      FOO<a 
    href="bar.com>BAZ
@@ -317,11 +445,7 @@ this makes the output easier to process with regular expressions.
 
 =head2 clearCruftText( $lines )
 
-This is the main method for this module. Removes cruft text from $lines and
-returns the result. Generally $lines will be a reference to an array of lines
-from an HTML file. However, this method can also be called with a string, in
-which case, the string will be split into multiple lines and an array reference
-of decrufted html lines is returned.
+This is the main method for this module. Removes cruft text from $lines and returns the result. Generally $lines will be a reference to an array of lines from an HTML file. However, this method can also be called with a string, in which case, the string will be split into multiple lines and an array reference of decrufted html lines is returned.
 
 =cut
 
@@ -329,63 +453,23 @@ sub clearCruftText
 {
     my $lines = shift;
 
-    my $expected_number_of_lines;
-    my $html;
-
-    if (ref ($lines)) {
-        # Arrayref
-        $expected_number_of_lines = scalar (@{$lines});
-        $html = join ("\n", @{ $lines });
-    } else {
-        # String - change all line endings to Unix
-        $html = $lines;
-
-        # 'x' linebreaks make 'x+1' lines (duh.)
-        # Not precompiled because trivial
-        $expected_number_of_lines = ($html =~ s/[\n\r]+/\n/g + 1);
+    if ( !ref( $lines ) )
+    {
+        $lines = [ split( /[\n\r]+/, $lines ) ];
     }
 
-    my $orig_html = $html;
+    _print_time( "split_lines" );
 
-    $html = _remove_tags_in_comments( $html );
+    $lines = _remove_tags_in_comments( $lines );
     _print_time( "remove tags" );
-
-    $html = _fix_multiline_tags( $html );
+    _fix_multiline_tags( $lines );
     _print_time( "fix multiline" );
-
-    # _remove_auxiliary_element_text() is run before _remove_nonbody_text()
-    # because <script> elements might contain <body>
-    $html = _remove_auxiliary_element_text( $html );
-    _print_time( "remove auxiliary element text" );
-
-    $html = _remove_nonbody_text( $html );
+    _remove_script_text( $lines );
+    _print_time( "remove scripts" );
+    _remove_nonbody_text( $lines );
     _print_time( "remove nonbody" );
-
-    $html = _remove_nonclickprint_text( $html );
+    _remove_nonclickprint_text( $lines );
     _print_time( "remove clickprint" );
-
-    # Remove the last newline (if there's one) because otherwise split() with
-    # -1 limit below will produce an unneeded empty line
-    $expected_number_of_lines -= $html =~ s/\n$//;
-
-    # Return arrayref in all cases
-    $lines = [ split( "\n", $html, -1 ) ];
-
-    # Make sure that the number of lines is the same as in the input
-    my $processed_number_of_lines = scalar(@{ $lines });
-    if ($expected_number_of_lines != $processed_number_of_lines) {
-
-        my $error = "The number of lines changed after processing the input HTML.\n";
-        $error .= "Expected # of lines: $expected_number_of_lines;\n";
-        $error .= "Actual # of lines: $processed_number_of_lines.\n";
-        $error .= "\n";
-        $error .= "Input HTML: --cut--\n" . $orig_html . "\n--cut--\n";
-        $error .= "\n";
-        $error .= "Output HTML: --cut--\n" . $html . "\n--cut--\n";
-        $error .= "\n";
-
-        warn $error;
-    }
 
     return $lines;
 }
@@ -397,38 +481,26 @@ Returns false otherwise.
 
 =cut
 
-my $_has_clickprint_regex_include = qr/<!--\s*startclickprintinclude/ios;
-
-sub has_clickprint($)
+sub has_clickprint
 {
-    my $lines = shift;
+    my ( $lines ) = @_;
 
-    if (ref ($lines)) {
-        # Arrayref
-        $lines = join ("\n", @{ $lines });
-    }
-
-    if ($lines =~ $_has_clickprint_regex_include) {
-        return 1;
-    } else {
-        return 0;
-    }
+    return defined( _clickprint_start_line( $lines ) );
 }
 
 
-=head1 AUTHORS
+=head1 AUTHOR
 
 David Larochelle, C<< <dlarochelle at cyber.law.harvard.edu> >>
 
-Linas Valiukas, C<< <lvaliukas at cyber.law.harvard.edu> >>
-
 =head1 BUGS
 
-Please report any bugs or feature requests to
-C<bug-html-crufttext at rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=HTML-CruftText>.  I will be
-notified, and then you'll automatically be notified of progress on your bug as
-I make changes.
+Please report any bugs or feature requests to C<bug-html-crufttext at rt.cpan.org>, or through
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=HTML-CruftText>.  I will be notified, and then you'll
+automatically be notified of progress on your bug as I make changes.
+
+
+
 
 =head1 SUPPORT
 

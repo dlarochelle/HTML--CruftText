@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
+# test MediaWords::Crawler::Extractor against manually extracted downloads
+
 use strict;
-use warnings;
 
 BEGIN
 {
@@ -26,11 +27,12 @@ Readonly my $test1_input =>
         test_input => <<'__END_TEST_CASE__',
 <html>
 <header>
-</header> <!---->
+</header>
 <body>
+<!---->
 Real article text
-</body>
 <!-- end body -->
+</body>
 </html>
 __END_TEST_CASE__
         ,
@@ -39,9 +41,10 @@ __END_TEST_CASE__
 
 
 <body>
+<!---->
 Real article text
+<!-- end body -->
 </body>
-
 
 __END_TEST_CASE__
     },
@@ -131,11 +134,12 @@ __END_TEST_CASE__
         test_input => <<'__END_TEST_CASE__',
 <html>
 <header>
-</header> <!--- Foo -->
+</header>
 <body>
+<!--- Foo -->
 Real article text
-</body>
 <!--- < end body >  --->
+</body>
 </html>
 __END_TEST_CASE__
         ,
@@ -146,9 +150,10 @@ __END_TEST_CASE__
 
 
 <body>
+<!--- Foo -->
 Real article text
+<!--- | end body |  --->
 </body>
-
 
 __END_TEST_CASE__
     },
@@ -157,11 +162,13 @@ __END_TEST_CASE__
         test_input => <<'__END_TEST_CASE__',
 <html>
 <header>
-</header> <!-- ---
---><body>
+</header>
+<body>
+<!-- ---
+-->
 Real article text
-</body>
 <!-- end body -->
+</body>
 </html>
 __END_TEST_CASE__
         ,
@@ -170,9 +177,11 @@ __END_TEST_CASE__
 
 
 <body>
+<!-- --- -->
+<!-- -->
 Real article text
+<!-- end body -->
 </body>
-
 
 __END_TEST_CASE__
     },
@@ -204,48 +213,6 @@ JUNK STRING
 </header>
 <body>
 Real article text
-</body>
-
-__END_TEST_CASE__
-    },
-    {
-        test_name  => 'multiline nested comment',
-        test_input => <<'__END_TEST_CASE__',
-<html>
-<header>
-<html>
-<body>
-JUNK STRING
-</body>
-</html>
-</header>
-<body>
-Real article text
-This is the comment, <!-- Hello there!
-Here goes another line of the comment.
-There are some <html> <elements /> in this comment as well.
-And hey, <!-- look, comment in a comment!
-But this is --> where the comment ends.
-</body>
-</html>
-__END_TEST_CASE__
-        ,
-        test_output => <<'__END_TEST_CASE__',
-
-
-
-<body>
-JUNK STRING
-</body>
-</html>
-</header>
-<body>
-Real article text
-This is the comment, <!-- Hello there! -->
-<!-- Here goes another line of the comment. -->
-<!-- There are some |html| |elements /| in this comment as well. -->
-<!-- And hey, |!-- look, comment in a comment! -->
-<!-- But this is --> where the comment ends.
 </body>
 
 __END_TEST_CASE__
@@ -327,71 +294,6 @@ __END_TEST_CASE__
 ARTICLE TEXT
 </p>
 </body>
-
-__END_TEST_CASE__
-    },
-    {
-        test_name  => 'successive_lines_1',
-        test_input => <<'__END_TEST_CASE__',
-
-
-x
-
-
-y
-
-
-z
-__END_TEST_CASE__
-        ,
-        test_output => <<'__END_TEST_CASE__',
-
-x
-y
-z
-__END_TEST_CASE__
-    },
-    {
-        test_name  => 'successive_lines_2',
-        test_input => <<'__END_TEST_CASE__',
-
-
-
-
-<html>
-
-
-
-<header>
-
-
-
-</header> <!---->
-
-
-
-<body>
-Real article text
-</body>
-<!-- end body -->
-
-
-
-</html>
-
-
-
-__END_TEST_CASE__
-        ,
-        test_output => <<'__END_TEST_CASE__',
-
-
-
-
-<body>
-Real article text
-</body>
-
 
 __END_TEST_CASE__
     }
