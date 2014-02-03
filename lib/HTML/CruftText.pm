@@ -388,11 +388,11 @@ HTML::CruftText - Remove unuseful text from HTML
 
 =head1 VERSION
 
-Version 0.06
+Version 0.02
 
 =cut
 
-our $VERSION = '0.06';
+our $VERSION = '0.02';
 
 
 =head1 SYNOPSIS

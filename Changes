@@ -1,40 +1,10 @@
 Revision history for HTML-CruftText
 
-0.06    2014-01-21
-        * Rollback to David's implementation (v0.01) because it appears to be
-          faster after all.
+0.02    2014-01-21
         * Use regexp-based HTML comment fixer subroutine because it's faster.
-
-0.05    2014-01-19
-        * Precompile regular expressions to gain some more speed.
-
-0.04    2014-01-19
-        * Instead of removing <!-- contents of HTML comments --> altogether,
-          make multiline comments single-line and replace "[<>]" characters
-          with "|".
-        * Rename regexp callback subroutines to better explain what they're
-          doing.
-        * Remove precompiled regular expressions (didn't add any speed and
-          weren't that reusable).
-
-0.03    2014-01-19
-        * Fixed handling of the last newline in the HTML page.
-        * Fixed a way to count lines.
-        * Improved formatting of debugging messages.
-        * Added RDF comment unit test.
-
-0.02    2014-01-18
-        * Replaced state machine-based implementation with a (faster) "regexp +
-          callback subroutine"-based implementation while also maintaining
-          backwards compatibility (both API and bugs are replicated too).
-        * Covered each of the internal subroutines ("helpers") with their very
-          own unit test so that one can now test those subroutines
-          independently.
-        * Covered successive newline removal behavior with unit tests.
-        * Fixed POD description regarding removal of HTML comments.
-        * Renamed some internal subroutines ("helpers") in order for their
-          names to better reflect what those subroutines are actually doing.
-        * Moved a list of ignored files to ".gitignore".
+        * Modify the comment removal unit tests so that they actually test
+          whether or not comments get removed.
+        * Move a list of ignored files to ".gitignore".
 
 0.01    Date/time
         First version, released on an unsuspecting world.
