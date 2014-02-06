@@ -26,122 +26,55 @@ my $_MARKER_PATTERNS = {
 # blank everything within these elements
 my $_SCRUB_TAGS = [ qw/script style frame applet textarea/ ];
 
-# remove >'s from inside comments so the simple line density scorer
-# doesn't get confused about where tags end
-sub _remove_tags_in_comments
+sub _remove_everything_except_newlines($)
 {
-    my ( $lines ) = @_;
+    my $data = shift;
 
-    my $state = 'text';
+    # Retain the number of newlines
+    my $newlines = ($data =~ tr/\n//);
 
-    for ( my $i = 0 ; $i < @{ $lines } ; $i++ )
-    {
-        my $line = \$lines->[ $i ];
+    return "\n" x $newlines;    
+}
 
-        my $pos    = 0;
-        my $length = length( $$line );
-        while ( $pos < $length )
-        {
 
-            #print "state $i $pos: $state\n";
-            if ( $state eq 'text' )
-            {
-                if ( substr( $$line, $pos, 2 ) eq '<!' )
-                {
-                    $state = 'declaration';
-                    $pos += 2;
-                }
-                else
-                {
-                    $pos++;
-                }
-            }
-            elsif ( $state eq 'declaration' )
-            {
-                if ( substr( $$line, $pos, 2 ) eq '--' )
-                {
-                    $state = 'comment';
-                    $pos += 2;
+my $_process_html_comment_regex_clickprint_comments = qr/^\s*(start|end)clickprint(in|ex)clude/ios;
+my $_process_html_comment_regex_brackets = qr/[<>]/os;
 
-                    my $extra_hyphens = 0;
+sub _process_html_comment($)
+{
+    my $data = shift;
 
-                    # deal with commonly broken comment syntax
-                    while ( substr( $$line, $pos, 1 ) eq '-' )
-                    {
-                        $pos++;
-                        $extra_hyphens++;
-                    }
+    # Don't touch clickprint comments
+    if ($data =~ $_process_html_comment_regex_clickprint_comments) {
+        return $data;
+    }
 
-                    #deal with empty comment <!---->
-                    if ( ( $extra_hyphens >= 2 ) && ( substr( $$line, $pos, 1 ) eq '>' ) )
-                    {
-                        $state = 'declaration';
-                    }
-                }
-                elsif ( substr( $$line, $pos, 1 ) eq '>' )
-                {
-                    $state = 'text';
-                    $pos += 1;
-                }
-                else
-                {
-                    $pos++;
-                }
-            }
-            elsif ( $state eq 'comment' )
-            {
-                if (   ( substr( $$line, $pos, 1 ) eq '<' )
-                    || ( substr( $$line, $pos, 1 ) eq '>' ) )
-                {
-                    substr( $lines->[ $i ], $pos, 1 ) = '|';
-                    $pos += 1;
-                }
-                elsif ( substr( $$line, $pos, 2 ) eq '--' )
-                {
-                    $pos += 2;
+    # Replace ">" and "<" to "|"
+    $data =~ s/$_process_html_comment_regex_brackets/|/g;
 
-                    # deal with commonly broken comment syntax
-                    while ( substr( $$line, $pos, 1 ) eq '-' )
-                    {
-                        $pos++;
-                    }
+    # Prepend every line with comment (not precompiled because trivial)
+    $data =~ s/\n/ -->\n<!-- /gs;
 
-                    if ( substr( $$line, $pos, 1 ) eq '>' )
-                    {
-                        $state = 'declaration';
-                    }
-                    else
-                    {    # Handle the case of a comment with ---- in the middle of it e.g. <!-- -------- -->
-                        $state = 'comment';
-                    }
+    return $data;
+}
 
-                }
-                else
-                {
-                    $pos++;
-                }
-            }
-        }    #while ( $pos < $length )
+# remove >'s from inside comments so the simple line density scorer
+# doesn't get confused about where tags end.
+# also, split multiline comments into multiple single line comments
+my $_remove_tags_in_comments_regex_html_comment = qr/<!--(.*?)-->/ios;
 
-        if ( $state eq 'comment' )
-        {
-            $lines->[ $i ] .= ' -->';
-            if ( defined( $lines->[ $i + 1 ] ) )
-            {
-                $lines->[ $i + 1 ] = '<!-- ' . $lines->[ $i + 1 ];
-                $state = 'text';
-            }
-        }
-        elsif ( $state eq 'declaration' )
-        {
-            $lines->[ $i ] .= ' >';
-            if ( defined( $lines->[ $i + 1 ] ) )
-            {
-                $lines->[ $i + 1 ] = '<!DECLARATION ' . $lines->[ $i + 1 ];
-                $state = 'text';
-            }
-        }
-    }    # for
+sub _remove_tags_in_comments($)
+{
+    my $lines = shift;
+
+    my $html = join("\n", @{ $lines });
+
+    # Remove ">" and "<" in comments
+    $html =~ s/$_remove_tags_in_comments_regex_html_comment/'<!--'._process_html_comment($1).'-->'/eg;
+
+    $lines = [ split("\n", $html) ];
+
+    return $lines;
 }
 
 # make sure that all tags start and close on one line
@@ -455,11 +388,11 @@ HTML::CruftText - Remove unuseful text from HTML
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 
 =head1 SYNOPSIS
@@ -527,7 +460,7 @@ sub clearCruftText
 
     _print_time( "split_lines" );
 
-    _remove_tags_in_comments( $lines );
+    $lines = _remove_tags_in_comments( $lines );
     _print_time( "remove tags" );
     _fix_multiline_tags( $lines );
     _print_time( "fix multiline" );

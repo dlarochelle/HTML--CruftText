@@ -27,11 +27,12 @@ Readonly my $test1_input =>
         test_input => <<'__END_TEST_CASE__',
 <html>
 <header>
-</header> <!---->
+</header>
 <body>
+<!---->
 Real article text
-</body>
 <!-- end body -->
+</body>
 </html>
 __END_TEST_CASE__
         ,
@@ -40,9 +41,10 @@ __END_TEST_CASE__
 
 
 <body>
+<!---->
 Real article text
+<!-- end body -->
 </body>
-
 
 __END_TEST_CASE__
     },
@@ -132,11 +134,12 @@ __END_TEST_CASE__
         test_input => <<'__END_TEST_CASE__',
 <html>
 <header>
-</header> <!--- Foo -->
+</header>
 <body>
+<!--- Foo -->
 Real article text
-</body>
 <!--- < end body >  --->
+</body>
 </html>
 __END_TEST_CASE__
         ,
@@ -147,9 +150,10 @@ __END_TEST_CASE__
 
 
 <body>
+<!--- Foo -->
 Real article text
+<!--- | end body |  --->
 </body>
-
 
 __END_TEST_CASE__
     },
@@ -158,11 +162,13 @@ __END_TEST_CASE__
         test_input => <<'__END_TEST_CASE__',
 <html>
 <header>
-</header> <!-- ---
---><body>
+</header>
+<body>
+<!-- ---
+-->
 Real article text
-</body>
 <!-- end body -->
+</body>
 </html>
 __END_TEST_CASE__
         ,
@@ -171,9 +177,11 @@ __END_TEST_CASE__
 
 
 <body>
+<!-- --- -->
+<!-- -->
 Real article text
+<!-- end body -->
 </body>
-
 
 __END_TEST_CASE__
     },
